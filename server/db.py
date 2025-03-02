@@ -15,7 +15,7 @@ SUPABASE_API_KEY = os.getenv("SUPABASE_API_KEY", "")
 
 async def get_client() -> AsyncClient:
     """
-    Helper function to create and return a new asynchronous Supabase client.
+    Helper function to create a new asynchronous Supabase client.
     """
     return await create_async_client(SUPABASE_URL, SUPABASE_API_KEY)
 
@@ -24,12 +24,14 @@ async def user_signup(first_name: str, last_name: str, phone_num: str, password:
         "first_name": first_name,
         "last_name": last_name,
         "phone_num": phone_num,
-        "pass": password,  
+        "pass": password, 
         "voice_embed": voice_embed, 
         "created_at": datetime.utcnow().isoformat()
     }
 
-    client = get_client() 
+    # client = create_async_client(SUPABASE_URL, SUPABASE_API_KEY)
+    client = get_client()
+    
     response = await client.table("users").insert(data).execute()
     result = response.dict() 
 
@@ -40,9 +42,10 @@ async def user_signup(first_name: str, last_name: str, phone_num: str, password:
 
 async def reset_checkins() -> dict:
     """
-    Resets the 'check_ins' table by deleting all its records.
+    Resets the 'checkins' table by deleting all its records.
     """
-    client = get_client()
+    client = await get_client()
+    # response =  await client.table("check_ins").delete().execute()
     response = await client.table("check_ins").delete().neq("video_url", "").execute()
     result = response.dict()
 
@@ -55,7 +58,7 @@ async def reset_trips() -> dict:
     """
     Resets the 'trips' table by deleting all its records.
     """
-    client = get_client()
+    client = await get_client()
     response = await client.table("trips").delete().neq("status", "").execute()
     result = response.dict()
 
@@ -64,12 +67,12 @@ async def reset_trips() -> dict:
     else:
         return {"status": "error", "message": result.get("error")}
     
+
 async def reset_emergency_contacts() -> dict:
     """
-    Resets the 'emergency_contact' table by deleting all its records.
+    Resets the 'emergency_contacts' table by deleting all its records.
     """
-    client = get_client()
-
+    client = await get_client()
     response = await client.table("emergency_contact").delete().neq("contact_name", "").execute()
     result = response.dict()
 
@@ -78,11 +81,13 @@ async def reset_emergency_contacts() -> dict:
     else:
         return {"status": "error", "message": result.get("error")}
     
+
+
 async def reset_users() -> dict:
     """
     Resets the 'users' table by deleting all its records.
     """
-    client = get_client()
+    client = await get_client()
     response = await client.table("users").delete().neq("first_name", "").execute()
     result = response.dict()
 
@@ -91,6 +96,7 @@ async def reset_users() -> dict:
     else:
         return {"status": "error", "message": result.get("error")}
     
+
 async def reset_db() -> dict:
     """
     Resets the entire database to the default state.
@@ -101,6 +107,7 @@ async def reset_db() -> dict:
         4. Users (parent)
     """
     results = {}
+
     results["check_ins"] = await reset_checkins()
     results["trips"] = await reset_trips()
     results["emergency_contacts"] = await reset_emergency_contacts()
@@ -114,7 +121,7 @@ async def set_status(trip_id: str, status: str) -> dict:
     
     Parameters:
         trip_id (str): The unique identifier of the trip.
-        status (str): The new status. Allowed values: "safe", "alert", "completed".
+        status (str): The new status, must be one of: "arrived", "delayed", "in progress".
         
     Returns:
         dict: A response dict indicating success or error with corresponding data.
@@ -127,7 +134,7 @@ async def set_status(trip_id: str, status: str) -> dict:
             "message": f"Invalid status provided. Allowed statuses: {allowed_statuses}"
         }
 
-    client = get_client()
+    client = await get_client()
     response = await client.table("trips").update({"status": status}).eq("id", trip_id).execute()
     result = response.dict()
 
@@ -136,23 +143,28 @@ async def set_status(trip_id: str, status: str) -> dict:
     else:
         return {"status": "error", "message": result.get("error")}
     
-async def notify_emergency_contact(user_id: int, trip_id: int, contact_name: str, phone_number: str) -> dict:
+async def notify_emergency_contact(user_id: int, trips_id: int, contact_name: str, phone_number: str) -> dict:
     """
-    Notifies an emergency contact by initiating a phone call.
+    Notifies an emergency contact by sending a push notification and initiating a phone call.
     
     Args:
-        user_id (int): Unique identifier for the traveler.
-        trip_id (int): Identifier for the trip.
+        traveler_id (str): Unique identifier for the traveler.
+        trip_id (str): Identifier for the trip.
         contact_name (str): Name of the emergency contact.
         phone_number (str): Phone number of the emergency contact.
+        device_token (str): Device token to send the push notification. Defaults to a dummy token.
     
     Returns:
-        dict: A dictionary with the result of the call initiation.
+        dict: A dictionary with the results of the push notification and call initiation.
     """
-    message = f"Emergency Alert: Traveler {user_id} on trip {trip_id} requires assistance. Please contact {contact_name} immediately."
-    # Optionally, you can also call sendPushNotification here if needed.
+    # Construct a notification message that includes traveler and trip details.
+    message = f"Emergency Alert: Traveler {user_id} on trip {trips_id} requires assistance. Please contact {contact_name} immediately."
+        
+    # Initiate an automated phone call. Replace initiateCall with your actual integration.
     call_result = initiateCall(phone_number)
+    
     return {"call": call_result}
+
 
 def initiateCall(phoneNumber: str) -> dict:
     """
