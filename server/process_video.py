@@ -6,6 +6,9 @@ from deepface import DeepFace
 import numpy as np
 import os
 
+def safe_remove(path):
+    if os.path.exists(path):
+        os.remove(path)
 
 def embed_voice(path):
     fpath = Path(path)
@@ -29,7 +32,7 @@ def process_voice(input_file, user_id):
     video = VideoFileClip(input_file)
     video.audio.write_audiofile(output_file)
     embed = embed_voice(output_file)
-    os.remove(output_file)
+    safe_remove(output_file)
     return embed
 
 
@@ -52,10 +55,10 @@ def process_image(input_file, user_id):
         cv2.imwrite(output_file, frame)
         cap.release()
         embed = embed_face(output_file)
-        os.remove(output_file)
+        safe_remove(output_file)
         return embed
     else:
         cap.release()
-        os.remove(output_file)
+        safe_remove(output_file)
         return None
 
