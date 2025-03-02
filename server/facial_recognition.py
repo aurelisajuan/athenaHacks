@@ -1,14 +1,20 @@
-from deepface import DeepFace
+from process_video import *
 
 
-def facial_recognition(path1, path2):
+def compare_embeddings(embed1, embed2):
+    similarity = np.dot(embed1, embed2) / (np.linalg.norm(embed1) * np.linalg.norm(embed2))
+    return similarity > 0.5  # Threshold (adjust as needed)
+
+
+def facial_recognition(embed1, embed2):
+    result = compare_embeddings(embed1, embed2)
+    return result
+
+
+def facial_recognition_hc(path1, path2):
     result = DeepFace.verify(
         img1_path=path1,
         img2_path=path2,
     )
 
     return result['verified']
-
-
-result = facial_recognition("demos/extracted_img.png", "demos/serena_img3.png")
-print(result)

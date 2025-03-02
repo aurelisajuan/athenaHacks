@@ -11,15 +11,26 @@ load_dotenv(override=True)
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_API_KEY = os.getenv("SUPABASE_API_KEY", "")
 
-supabase: AsyncClient = create_async_client(SUPABASE_URL, SUPABASE_API_KEY)
+# supabase: AsyncClient = create_async_client(SUPABASE_URL, SUPABASE_API_KEY)
 
-async def user_signup(first_name: str, last_name: str, phone_num: str) -> dict:
+async def get_client() -> AsyncClient:
+    """
+    Helper function to create a new asynchronous Supabase client.
+    """
+    return await reate_async_client(SUPABASE_URL, SUPABASE_API_KEY)
+
+async def user_signup(first_name: str, last_name: str, phone_num: str, password: str, voice_embed: list) -> dict:
     data = {
         "first_name": first_name,
         "last_name": last_name,
         "phone_num": phone_num,
+        "pass": password, 
+        "voice_embed": voice_embed, 
         "created_at": datetime.utcnow().isoformat()
     }
+
+    # client = create_async_client(SUPABASE_URL, SUPABASE_API_KEY)
+    client = get_client()
     
     response = await client.table("users").insert(data).execute()
     result = response.dict() 
@@ -29,4 +40,77 @@ async def user_signup(first_name: str, last_name: str, phone_num: str) -> dict:
     else:
         return {"status": "error", "message": result.get("error")}
 
+async def reset_checkins() -> dict:
+    """
+    Resets the 'checkins' table by deleting all its records.
+    """
+    client = await get_client()
+    # response =  await client.table("check_ins").delete().execute()
+    response = await client.table("check_ins").delete().neq("video_url", "").execute()
+    result = response.dict()
 
+    if result.get("error") is None:
+        return {"status": "success", "data": result.get("data")}
+    else:
+        return {"status": "error", "message": result.get("error")}
+    
+async def reset_trips() -> dict:
+    """
+    Resets the 'trips' table by deleting all its records.
+    """
+    client = await get_client()
+    response = await client.table("trips").delete().neq("status", "").execute()
+    result = response.dict()
+
+    if result.get("error") is None:
+        return {"status": "success", "data": result.get("data")}
+    else:
+        return {"status": "error", "message": result.get("error")}
+    
+
+async def reset_emergency_contacts() -> dict:
+    """
+    Resets the 'emergency_contacts' table by deleting all its records.
+    """
+    client = await get_client()
+    response = await client.table("emergency_contact").delete().neq("contact_name", "").execute()
+    result = response.dict()
+
+    if result.get("error") is None:
+        return {"status": "success", "data": result.get("data")}
+    else:
+        return {"status": "error", "message": result.get("error")}
+    
+
+
+async def reset_users() -> dict:
+    """
+    Resets the 'users' table by deleting all its records.
+    """
+    client = await get_client()
+    response = await client.table("users").delete().neq("first_name", "").execute()
+    result = response.dict()
+
+    if result.get("error") is None:
+        return {"status": "success", "data": result.get("data")}
+    else:
+        return {"status": "error", "message": result.get("error")}
+    
+
+async def reset_db() -> dict:
+    """
+    Resets the entire database to the default state.
+    Deletion is done in the following order to respect foreign key constraints:
+        1. CheckIns (child of Trips)
+        2. Trips (child of Users)
+        3. Emergency Contacts (child of Users)
+        4. Users (parent)
+    """
+    results = {}
+
+    results["check_ins"] = await reset_checkins()
+    results["trips"] = await reset_trips()
+    results["emergency_contacts"] = await reset_emergency_contacts()
+    results["users"] = await reset_users()
+
+    return {"status": "success", "results": results}

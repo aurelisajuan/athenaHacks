@@ -1,6 +1,4 @@
-from resemblyzer import VoiceEncoder, preprocess_wav
-from pathlib import Path
-import numpy as np
+from process_video import *
 
 
 def cosine_similarity(vec1, vec2):
@@ -8,7 +6,14 @@ def cosine_similarity(vec1, vec2):
     return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
 
 
-def voice_recognition(path1, path2):
+def voice_recognition(embed1, embed2):
+    # Compute similarity
+    similarity = cosine_similarity(embed1, embed2)
+
+    return similarity > 0.75
+
+
+def voice_recognition_hc(path1, path2):
     # Load and preprocess the audio files
     fpath1 = Path(path1)
     fpath2 = Path(path2)
@@ -27,7 +32,3 @@ def voice_recognition(path1, path2):
     similarity = cosine_similarity(embed1, embed2)
 
     return similarity > 0.75
-
-
-result = voice_recognition("demos/extracted_voice.wav", "demos/serena_demo.wav")
-print(result)

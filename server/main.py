@@ -1,10 +1,13 @@
-import os
 import math
-import requests
 import asyncio
+import uvicorn
 from functools import partial
-from fastapi import FastAPI, HTTPException, Form, Request
-from pydantic import BaseModel
+import ast
+import os
+
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException, Form, Request, UploadFile, File
+from pydantic import BaseModel, EmailStr
 from supabase import create_client, Client
 from fastapi.middleware.cors import CORSMiddleware
 import aiofiles
@@ -13,10 +16,12 @@ from process_video import *
 
 app = FastAPI()
 
+load_dotenv()
+
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_API_KEY = os.getenv("SUPABASE_API_KEY")
-GOOGLE_MAPS_MATRIX_API = os.getenv("GOOGLE_MAPS_MATRIX_API")
 GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
+GOOGLE_MAPS_MATRIX_API = os.getenv("GOOGLE_MAPS_API_KEY")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_API_KEY)
 
@@ -30,21 +35,97 @@ app.add_middleware(
 )
 
 
-@app.post("/get-ref-video")
-async def get_ref_video(request: Request):
+class SignUpRequest(BaseModel):
+    first_name: str
+    last_name: str
+    phone_num: str
+
+
+@app.post("/signup")
+async def signup(user: SignUpRequest):
     try:
-        video_bytes = await request.body()  # Read the video bytes
-        path = "demos/serena_reference_video.mp4"
+        response = supabase.table("users").insert({
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "phone_num": user.phone_num,
+        }).execute()
 
-        async with aiofiles.open(path, "wb") as video_file:
-            await video_file.write(video_bytes)
+        user_data = response.data[0]
+        user_id = user_data["id"]
 
-        voice_path = process_voice(path)
-        face_path = process_image(path)
-
-        # save to database
+        return {
+            "id": user_id,
+        }
 
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class LoginRequest(BaseModel):
+    first_name: str
+    last_name: str
+    phone_num: str
+
+
+@app.post("/login")
+async def login(user: LoginRequest):
+    try:
+        # Query the Supabase database for a matching user
+        response = supabase.table("users") \
+            .select("*") \
+            .eq("first_name", user.first_name) \
+            .eq("last_name", user.last_name) \
+            .eq("phone_num", user.phone_num) \
+            .execute()
+
+        if not response.data:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+
+        user_data = response.data[0]  # Get the matched user
+
+        return {
+            "message": "Login successful",
+            "user": {
+                "id": user_data["id"],
+                "first_name": user_data["first_name"],
+                "last_name": user_data["last_name"],
+                "phone_num": user_data["phone_num"]
+            }
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/get-ref-video")
+async def get_ref_video(user_id: int = Form(...), file: UploadFile = File(...)):
+    path = f"user_data/{user_id}_ref_vid.mp4"
+    try:
+        if not user_id:
+            return {"error": "User ID is required"}
+
+        async with aiofiles.open(path, "wb") as video_file:
+            content = await file.read()
+            await video_file.write(content)
+
+        voice_embed = process_voice(path, user_id)
+        face_embed = process_image(path, user_id)
+
+        # save to database
+        response = supabase.table("users").update({
+            "voice_embed": voice_embed.tolist(),
+            "face_embed": face_embed.tolist()
+        }).eq("id", user_id).execute()
+
+        if response.count == 0:
+            raise HTTPException(status_code=404, detail="User ID not found in database")
+        os.remove(path)
+        return {
+            "message": "Reference video processed successfully"
+        }
+
+    except Exception as e:
+        os.remove(path)
         return {"error": str(e)}
 
 
@@ -69,23 +150,54 @@ async def get_interval(time: int = Form(...)):
     return {"received_message": time}
 
 
+def get_embeddings(user_id: int):
+    response = supabase.table("users").select("voice_embed, face_embed").eq("id", user_id).execute()
+
+    # Check if user exists
+    if not response.data:
+        raise HTTPException(status_code=404, detail="User ID not found in database")
+
+    # Extract embeddings
+    embeddings = response.data[0]
+
+    voice_embedding = embeddings["voice_embed"]
+    face_embedding = embeddings["face_embed"]
+
+    if isinstance(voice_embedding, str):  # Convert from string to list
+        voice_embedding = ast.literal_eval(voice_embedding)
+
+    if isinstance(face_embedding, str):  # Convert from string to list
+        face_embedding = ast.literal_eval(face_embedding)
+
+    voice_embedding = np.array(voice_embedding, dtype=np.float32)
+    face_embedding = np.array(face_embedding, dtype=np.float32)
+
+    return voice_embedding, face_embedding
+
+
 @app.post("/check-in")
-async def check_in(request: Request):
+async def check_in(user_id: int = Form(...), file: UploadFile = File(...)):
+    path = f"user_data/{user_id}_checkin_vid.mp4"
     try:
-        video_bytes = await request.body()  # Read the video bytes
-        path = "demos/serena_video.mp4"
+        if not user_id:
+            return {"error": "User ID is required"}
 
         async with aiofiles.open(path, "wb") as video_file:
-            await video_file.write(video_bytes)
+            content = await file.read()
+            await video_file.write(content)
 
-        voice_path = process_voice(path)
-        img_path = process_image(path)
+        voice_embed1, face_embed1 = get_embeddings(user_id)
 
-        result = recognition(voice_path, "demos/serena_demo.wav", img_path, "demos/serena_img3.png")
+        voice_embed2 = process_voice(path, user_id)
+        face_embed2 = process_image(path, user_id)
 
+        result = recognition(voice_embed1, voice_embed2,face_embed1, face_embed2)
+
+        os.remove(path)
         return {"matched": result}
 
     except Exception as e:
+        os.remove(path)
         return {"error": str(e)}
 
 
@@ -99,17 +211,18 @@ def calc_eta_sync(start: str, destination: str) -> int:
     Synchronous function that calculates ETA using the Google Maps Distance Matrix API.
     Applies a 20% safety buffer and returns the ETA in minutes.
     """
-    params = {
-        "origins": start,
-        "destinations": destination,
-        "key": GOOGLE_MAPS_API_KEY,
-        "mode": "driving"
-    }
+    # params = {
+    #     "origins": start,
+    #     "destinations": destination,
+    #     "key": GOOGLE_MAPS_API_KEY,
+    #     "mode": "driving"
+    # }
 
-    response = requests.get(GOOGLE_MAPS_MATRIX_API, params=params)
-    data = response.json()
+    response = client.distance_matrix(origins=start, destinations=destination, mode="driving")
+    print(response)
+    # The response is already a dictionary, no need to call json()
+    data = response
 
-    # Check if the API call was successful and a route was found.
     if data.get("status") != "OK":
         raise Exception("Error with Distance Matrix API: " + data.get("error_message", "Unknown error"))
 
@@ -142,6 +255,4 @@ async def calculate_eta_endpoint(request: ETARequest):
 
 
 if __name__ == "__main__":
-    import uvicorn
-
     uvicorn.run(app, host="127.0.0.1", port=8000, reload=True)
