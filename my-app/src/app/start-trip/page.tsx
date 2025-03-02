@@ -1,10 +1,21 @@
 "use client";
 
-import type React from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { MapPin, Bell, Users } from "lucide-react";
+import {
+  APIProvider,
+  ControlPosition,
+  MapControl,
+  AdvancedMarker,
+  Map,
+  useMap,
+  useMapsLibrary,
+  useAdvancedMarkerRef,
+} from "@vis.gl/react-google-maps";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-import { useState } from "react";
-import Image from "next/image";
-import { Search, MapPin, Bell, Users } from "lucide-react";
+// Your Google Maps API key from globalThis or fallback to a string.
+const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
 // Types for our data
 type SavedLocation = {
@@ -13,153 +24,151 @@ type SavedLocation = {
   distance: string;
 };
 
-// Dummy data for saved locations
-const savedLocations: SavedLocation[] = [
-  { id: "1", name: "1225 W 30th Street", distance: "1.5mi" },
-  { id: "2", name: "Century City Mall", distance: "7.2mi" },
-  { id: "3", name: "Century City Mall", distance: "7.2mi" },
-];
-
-// Dummy function to handle search - would connect to backend
-const searchDestination = (query: string) => {
-  console.log("Searching for:", query);
-  // This would typically make an API call to search for destinations
-};
-
-// Dummy function to get user's current location
-const getCurrentLocation = () => {
-  // This would use the browser's geolocation API in a real implementation
-  return { lat: 34.0224, lng: -118.2851 }; // USC area coordinates as example
-};
-
+// Main component integrating your UI and Google Maps autocomplete
 export default function StartTrip() {
-  const [destination, setDestination] = useState("");
-  const [userName, setUserName] = useState("Name"); // Would come from user profile
-
-  // Handle search submission
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    searchDestination(destination);
-  };
-
-  // Handle quick destination selection
-  const handleQuickDestination = (place: string) => {
-    console.log(`Selected ${place}`);
-    // Would typically fetch the saved location and set as destination
-  };
+  const [userName, setUserName] = useState("Lisa"); // Would come from user profile
+  const [selectedPlace, setSelectedPlace] =
+    useState<google.maps.places.PlaceResult | null>(null);
+  const [markerRef, marker] = useAdvancedMarkerRef();
 
   return (
-    <div className="flex flex-col h-screen bg-gray-100">
-      <div className="flex-1 p-6 overflow-auto">
-        {/* Header with greeting and avatar */}
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-xl font-normal">
-            Hi, <span className="font-semibold">{userName}</span>
-          </h1>
-          <div className="w-10 h-10 bg-gray-300 rounded-full"></div>
-        </div>
-
-        {/* Main heading */}
-        <h2 className="text-3xl font-bold mb-4">Where to?</h2>
-
-        {/* Search input */}
-        <form onSubmit={handleSearch} className="mb-4">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Enter your destination"
-              className="w-full py-3 px-4 bg-white rounded-full text-gray-700 focus:outline-none"
-              value={destination}
-              onChange={(e) => setDestination(e.target.value)}
-            />
-            <button
-              type="submit"
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-500"
-            >
-              <Search className="h-5 w-5" />
-            </button>
+    <APIProvider
+      apiKey={API_KEY}
+      solutionChannel="GMP_devsite_samples_v3_rgmautocomplete"
+    >
+      <div className="flex flex-col h-screen bg-gray-100">
+        <div className="flex-1 p-6 overflow-auto">
+          {/* Header with greeting and avatar */}
+          <div className="flex justify-between items-center mb-4 pt-4">
+            <h1 className="text-xl font-large">
+              Hi, <span className="font-semibold">{userName}</span>
+            </h1>
+            <Avatar className="w-10 h-10">
+              <AvatarImage src="./jett.webp" />
+              <AvatarFallback>CN</AvatarFallback>
+            </Avatar>
           </div>
-        </form>
 
-        {/* Quick destination buttons */}
-        <div className="flex gap-3 mb-6">
-          <button
-            onClick={() => handleQuickDestination("Home")}
-            className="flex-1 py-3 bg-gray-200 rounded-full text-center"
-          >
-            Home
-          </button>
-          <button
-            onClick={() => handleQuickDestination("School")}
-            className="flex-1 py-3 bg-gray-200 rounded-full text-center"
-          >
-            School
-          </button>
-          <button
-            onClick={() => handleQuickDestination("Work")}
-            className="flex-1 py-3 bg-gray-200 rounded-full text-center"
-          >
-            Work
-          </button>
-        </div>
+          <h2 className="text-2xl font-bold mb-4">Where from?</h2>
+          <div className="mb-4">
+            <PlaceAutocomplete onPlaceSelect={setSelectedPlace} />
+          </div>
 
-        {/* Saved locations */}
-        <div className="mb-6">
-          {savedLocations.map((location) => (
-            <div
-              key={location.id}
-              className="flex justify-between items-center mb-4"
-            >
-              <span>{location.name}</span>
-              <span className="text-gray-500">{location.distance}</span>
-            </div>
-          ))}
-        </div>
+          <h2 className="text-2xl font-bold mb-4">Where to?</h2>
+          <div className="mb-4">
+            <PlaceAutocomplete onPlaceSelect={setSelectedPlace} />
+          </div>
 
-        {/* Current location map */}
-        <div className="mb-2">
-          <h3 className="text-gray-500 uppercase text-sm tracking-wider mb-2">
-            Your location
-          </h3>
-          <div className="relative h-48 w-full bg-gray-200 rounded-lg overflow-hidden">
-            {/* This would be replaced with an actual map component */}
-            <div className="absolute inset-0">
-              <Image
-                src="/placeholder.svg?height=200&width=400"
-                alt="Map showing current location"
-                fill
-                className="object-cover"
-              />
-            </div>
-            {/* Blue dot for current location */}
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-              <div className="h-4 w-4 bg-blue-500 rounded-full"></div>
+          {/* Google Map with current location and autocomplete marker */}
+          <div className="mb-2">
+            <h3 className="text-gray-500 uppercase text-sm tracking-wider mb-2">
+              Location - Destination
+            </h3>
+            <div className="relative h-48 w-full bg-gray-200 rounded-lg overflow-hidden">
+              <Map
+                mapId="bf51a910020fa25a"
+                defaultZoom={3}
+                defaultCenter={{ lat: 22.54992, lng: 0 }}
+                gestureHandling="greedy"
+                disableDefaultUI={true}
+              >
+                <AdvancedMarker ref={markerRef} position={null} />
+                <MapControl position={ControlPosition.TOP}>
+                  <div className="autocomplete-control">
+                    {/* You could optionally place another autocomplete here */}
+                  </div>
+                </MapControl>
+                <MapHandler place={selectedPlace} marker={marker} />
+              </Map>
             </div>
           </div>
+        </div>
+
+        {/* Bottom navigation */}
+        <div className="flex justify-around items-center py-3 bg-white">
+          <button className="flex flex-col items-center">
+            <a href="/trip-info" className="text-xs">
+              <div className="w-8 h-8 flex items-center justify-center">
+                <MapPin className="h-6 w-6" />
+              </div>
+              Trip Status
+            </a>
+          </button>
+          <button className="flex flex-col items-center">
+            <div className="w-8 h-8 flex items-center justify-center">
+              <Bell className="h-6 w-6" />
+            </div>
+            <span className="text-xs">Alert</span>
+          </button>
+          <button className="flex flex-col items-center">
+            <div className="w-8 h-8 flex items-center justify-center">
+              <Users className="h-6 w-6" />
+            </div>
+            <span className="text-xs">My Contact</span>
+          </button>
         </div>
       </div>
-
-      {/* Bottom navigation */}
-      <div className="flex justify-around items-center py-3 bg-white">
-        <button className="flex flex-col items-center">
-          <div className="w-8 h-8 flex items-center justify-center">
-            <MapPin className="h-6 w-6 text-pink-500" />
-          </div>
-          <span className="text-xs">Trip Status</span>
-        </button>
-        <button className="flex flex-col items-center">
-          <div className="w-8 h-8 flex items-center justify-center">
-            <Bell className="h-6 w-6" />
-          </div>
-          <span className="text-xs">Alert</span>
-        </button>
-        <button className="flex flex-col items-center">
-          <div className="w-8 h-8 flex items-center justify-center">
-            <Users className="h-6 w-6" />
-          </div>
-          <span className="text-xs">My Contact</span>
-        </button>
-      </div>
-    </div>
+    </APIProvider>
   );
 }
+
+// MapHandler moves the map viewport and marker when a new place is selected.
+interface MapHandlerProps {
+  place: google.maps.places.PlaceResult | null;
+  marker: google.maps.marker.AdvancedMarkerElement | null;
+}
+
+const MapHandler = ({ place, marker }: MapHandlerProps) => {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!map || !place || !marker) return;
+
+    if (place.geometry?.viewport) {
+      map.fitBounds(place.geometry.viewport);
+    }
+    marker.position = place.geometry?.location;
+  }, [map, place, marker]);
+
+  return null;
+};
+
+// PlaceAutocomplete uses the Google Maps Places library to enable autocomplete.
+interface PlaceAutocompleteProps {
+  onPlaceSelect: (place: google.maps.places.PlaceResult | null) => void;
+}
+
+const PlaceAutocomplete = ({ onPlaceSelect }: PlaceAutocompleteProps) => {
+  const [placeAutocomplete, setPlaceAutocomplete] =
+    useState<google.maps.places.Autocomplete | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const places = useMapsLibrary("places");
+
+  useEffect(() => {
+    if (!places || !inputRef.current) return;
+
+    const options = {
+      fields: ["geometry", "name", "formatted_address"],
+    };
+
+    setPlaceAutocomplete(new places.Autocomplete(inputRef.current, options));
+  }, [places]);
+
+  useEffect(() => {
+    if (!placeAutocomplete) return;
+
+    placeAutocomplete.addListener("place_changed", () => {
+      onPlaceSelect(placeAutocomplete.getPlace());
+    });
+  }, [onPlaceSelect, placeAutocomplete]);
+
+  return (
+    <div className="autocomplete-container">
+      <input
+        ref={inputRef}
+        className="w-full py-3 px-4 bg-white rounded-full text-gray-700 focus:outline-none"
+        placeholder="Enter your destination"
+      />
+    </div>
+  );
+};
