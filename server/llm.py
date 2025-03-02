@@ -13,18 +13,18 @@ from custom_types import (
     ToolCallResultResponse,
     AgentInterruptResponse,
 )
-from db import update_trans, set_locked
-from prompts import (
-    authorization_agent_prompt,
-    fraud_agent_prompt,
-)
+# from db import update_trans, set_locked
+# from prompts import (
+    # beginSentence,
+    # mid_checkin_prompt,
+    # final_checkin_prompt,
+# )
 import json
 from prompts import (
     mid_checkin_prompt,
     final_checkin_prompt,
     beginSentence,
 )
-from db import set_status 
 from db import set_status, notify_emergency_contact
 from typing import List, Dict, Any
 
@@ -146,7 +146,6 @@ class LlmClient:
     async def draft_response(self, request:ResponseRequiredRequest):     
         prompt = self.prepare_prompt(request)
         response_id = request.response_id
-        print("Functions:", self.prepare_functions())
 
         while True:
             func_calls = {}
@@ -211,7 +210,7 @@ class LlmClient:
                     print("end_call:", message)
                     yield ResponseResponse(
                         response_id=response_id,
-                        content=args.get(message, ""),
+                        content=message,
                         content_complete=True,
                         end_call=True,
                     )
@@ -227,8 +226,8 @@ class LlmClient:
                     print("Output:", output)
                     # Update the trip status (e.g., call to Supabase DB or API).
                     await set_status(
-                        self.trip_details.get("id"),
-                        {"status": status},
+                        self.trip_details.get("trip_id"),
+                        status,
                     )
                     new_messages.append(
                         {"role": "tool", "tool_call_id": fc.id, "content": output}

@@ -6,15 +6,26 @@ import uvicorn
 from functools import partial
 import ast
 import os
+import json
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Form, Request, UploadFile, File
+from fastapi import FastAPI, HTTPException, Form, Request, UploadFile, File, WebSocket, WebSocketDisconnect
+from concurrent.futures import TimeoutError as ConnectionTimeoutError
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr
 from supabase import create_client, Client
 from fastapi.middleware.cors import CORSMiddleware
 import aiofiles
 from recognition import recognition
 from process_video import *
+
+from custom_types import (
+    ConfigResponse,
+    ResponseRequiredRequest,
+)
+from retell import Retell
+from llm import LlmClient
+
 
 app = FastAPI()
 
@@ -24,7 +35,8 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_API_KEY = os.getenv("SUPABASE_API_KEY")
 GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_API_KEY)
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_API_KEY) #TODO: Change this to async client
+retell = Retell(api_key=os.environ["RETELL_API_KEY"])
 
 client = googlemaps.Client(key=GOOGLE_MAPS_API_KEY)
 
@@ -163,6 +175,19 @@ class TripStartRequest(BaseModel):
     user_id: int
     trip_id: int
 
+async def scheduled_call(delay: float, mode: int, trip_data: dict, traveler_data: dict):
+    # Wait for the specified delay (in seconds)
+    await asyncio.sleep(delay)
+    # Make the phone call using your retell client
+    retell.call.create_phone_call(
+        from_number=retell_number,
+        to_number=user_number,
+        metadata={
+            "mode": mode,
+            "trip_details": trip_data,
+            "traveler_details": traveler_data,
+        },
+    )
 
 @app.post("/start")
 async def save_trip(trip: TripStartRequest):
@@ -173,6 +198,9 @@ async def save_trip(trip: TripStartRequest):
 
     response = supabase.table("trips").select("*").eq("id", trip.trip_id).eq("user_id", trip.user_id).execute()
 
+    # Grab user details
+    user_response = supabase.table("users").select("*").eq("id", trip.user_id).execute()
+
     if not response.data:
         raise HTTPException(status_code=404, detail="Trip not found")
 
@@ -180,16 +208,41 @@ async def save_trip(trip: TripStartRequest):
     start_location = trip_data["start_location"]
     destination = trip_data["destination"]
 
-    eta = await calc_eta(start_location, destination)
+    eta_minutes = await calc_eta(start_location, destination)
 
     trip_data = trip.dict()
-    trip_data["eta"] = eta
+    trip_data["eta"] = eta_minutes
 
-    update_response = supabase.table("trips").update({"eta": eta}).eq("id", trip.trip_id).execute()
+    update_response = supabase.table("trips").update({"eta": eta_minutes}).eq("id", trip.trip_id).execute()
 
     if update_response.data:
+        # TODO: Here, we set up three timers
+        # One timer at 50% eta, to call the user
+        # Two timer at 120% eta to call the user
+        # Three timer at 100% eta to send a push notification to the user
+
+        retell_number = "+14435668609"
+        user_number = "+14435668609" # TODO: Change this to demo number
+
+        eta_seconds = eta_minutes * 60
+
+        # Schedule calls:
+        # Scenario 1: Call at 50% of ETA (mode 0)
+        asyncio.create_task(
+            scheduled_call(eta_seconds * 0.5, 0, trip_data, user_response.data[0])
+        )
+        # Scenario 2: Call at 120% of ETA (mode 1)
+        asyncio.create_task(
+            scheduled_call(eta_seconds * 1.2, 1, trip_data, user_response.data[0])
+        )
+            
+
+        # Scenario 3:
+        # TODO: FCM push notification, will need to set up firebase
+
+
         return {
-            "eta": eta,
+            "eta": eta_minutes,
         }
     else:
         raise HTTPException(status_code=500, detail="Failed to update trip")
@@ -287,6 +340,85 @@ async def calc_eta(start: str, destination: str) -> int:
 class ETARequest(BaseModel):
     start: str
     destination: str
+
+    # WebSocket server for exchanging messages with the Retell server.
+@app.websocket("/llm-websocket/{call_id}")
+async def websocket_handler(websocket: WebSocket, call_id: str):
+    try:
+        await websocket.accept()
+        llm_client = None
+
+        # Send configuration to the Retell server
+        config = ConfigResponse(
+            response_type="config",
+            config={
+                "auto_reconnect": True,
+                "call_details": True,
+            },
+            response_id=1,
+        )
+        await websocket.send_json(config.__dict__)
+        response_id = 0
+
+        async def handle_message(request_json):
+            nonlocal response_id
+            nonlocal llm_client
+            if request_json["interaction_type"] == "call_details":
+                print(request_json["call"]["metadata"])
+                mode = request_json["call"]["metadata"]["mode"]
+                trip_details = request_json["call"]["metadata"]["trip_details"]
+                traveler_details = request_json["call"]["metadata"]["traveler_details"]
+                llm_client = LlmClient(mode, trip_details, traveler_details)
+                print("LLM client created")
+                first_event = await llm_client.draft_begin_messsage()
+                await websocket.send_text(json.dumps(first_event))
+                return
+            if request_json["interaction_type"] == "ping_pong":
+                pong_response = {
+                    "response_type": "ping_pong",
+                    "timestamp": request_json["timestamp"],
+                }
+                print("Sending ping pong response:", pong_response)
+                await websocket.send_json(pong_response)
+                return
+            if request_json.get("interaction_type") == "update_only":
+                print("Update only interaction received, ignoring.")
+                return
+            if request_json["interaction_type"] in [
+                "response_required",
+                "reminder_required",
+            ]:
+                response_id = request_json["response_id"]
+                transcript = request_json.get("transcript", [])
+
+                request_obj = ResponseRequiredRequest(
+                    interaction_type=request_json["interaction_type"],
+                    response_id=response_id,
+                    transcript=transcript,
+                )
+                async for event in llm_client.draft_response(request_obj):
+                    try:
+                        await websocket.send_json(event.__dict__)
+                    except Exception as e:
+                        print(
+                            f"Error sending event via WebSocket: {e} for call_id: {call_id}"
+                        )
+                    if request_obj.response_id < response_id:
+                        print("New response needed, abandoning current draft.")
+                        break
+
+        async for data in websocket.iter_json():
+            asyncio.create_task(handle_message(data))
+
+    except WebSocketDisconnect:
+        print(f"LLM WebSocket disconnected for {call_id}")
+    except ConnectionTimeoutError as e:
+        print(f"Connection timeout error for {call_id}: {e}")
+    except Exception as e:
+        print(f"Error in LLM WebSocket: {e} for call_id: {call_id}")
+        await websocket.close(1011, "Server error")
+    finally:
+        print(f"LLM WebSocket connection closed for {call_id}")
 
 
 # Test endpoint to check the helper function

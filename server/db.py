@@ -126,7 +126,8 @@ async def set_status(id: str, status: str) -> dict:
     Returns:
         dict: A response dict indicating success or error with corresponding data.
     """
-    allowed_statuses = {"arrived", "delayed", "in progress"}
+    # allowed_statuses = {"arrived", "delayed", "in progress"}
+    allowed_statuses = {"safe", "alert", "in-progress"}
     if status not in allowed_statuses:
         return {
             "status": "error",
