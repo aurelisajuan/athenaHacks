@@ -2,8 +2,11 @@ from moviepy import VideoFileClip
 import cv2
 
 
-def process_voice(input_file):
-    output_file = "demos/extracted_voice.wav"  # Change to "output.wav" for WAV format
+def process_voice(input_file, category=0):
+    output_file = "demos/extracted_reference_voice.wav"
+    if category == 1:
+        output_file = "demos/extracted_voice.wav"
+
 
     video = VideoFileClip(input_file)
     video.audio.write_audiofile(output_file)
@@ -11,8 +14,10 @@ def process_voice(input_file):
     return output_file
 
 
-def process_video(input_file):
-    output_file = "demos/extracted_img.png"
+def process_image(input_file, category=0):
+    output_file = "demos/extracted_reference_voice.wav"
+    if category == 1:
+        output_file = "demos/extracted_img.png"
 
     cap = cv2.VideoCapture(input_file)
 

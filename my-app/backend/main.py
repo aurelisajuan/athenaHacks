@@ -16,9 +16,22 @@ app.add_middleware(
 )
 
 
-@app.get("/api/data")
-def get_data():
-    return {"message": "Hello from FastAPI!"}
+@app.post("/get-ref-video")
+async def get_ref_video(request: Request):
+    try:
+        video_bytes = await request.body()  # Read the video bytes
+        path = "demos/serena_reference_video.mp4"
+
+        async with aiofiles.open(path, "wb") as video_file:
+            await video_file.write(video_bytes)
+
+        voice_path = process_voice(path)
+        face_path = process_image(path)
+        
+        # save to databse
+
+    except Exception as e:
+        return {"error": str(e)}
 
 
 @app.post("/get-origin")
@@ -51,8 +64,8 @@ async def check_in(request: Request):
         async with aiofiles.open(path, "wb") as video_file:
             await video_file.write(video_bytes)
 
-        voice_path = process_voice(path)
-        img_path = process_video(path)
+        voice_path = process_voice(path, 1)
+        img_path = process_image(path, 1)
 
         result = recognition(voice_path, "demos/serena_demo.wav", img_path, "demos/serena_img3.png")
 
