@@ -8,11 +8,10 @@ import {
   MapControl,
   AdvancedMarker,
   Map,
-  useMap,
   useMapsLibrary,
-  useAdvancedMarkerRef,
 } from "@vis.gl/react-google-maps";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useRouter } from "next/navigation";
 
 // Google Maps API key
 const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
@@ -22,11 +21,23 @@ const USC_LAT_LNG = { lat: 34.0224, lng: -118.2851 };
 
 // Main component integrating UI and Google Maps autocomplete
 export default function StartTrip() {
-  const [userName, setUserName] = useState("Lisa"); // Would come from user profile
-  const [selectedPlace, setSelectedPlace] =
-    useState<google.maps.places.PlaceResult | null>(null);
-  const [markerRef, marker] = useAdvancedMarkerRef();
+  const router = useRouter();
+
+  const [userName, setUserName] = useState("Lisa");
+  const [startLocation, setStartLocation] = useState<string>("");
+  const [destination, setDestination] = useState<string>("");
   const [mapCenter, setMapCenter] = useState(USC_LAT_LNG);
+  const [selectedInterval, setSelectedInterval] = useState(0);
+
+  // const userId = localStorage.getItem("user_id"); // Retrieve stored user ID
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedUserId = localStorage.getItem("user_id");
+      setUserId(storedUserId);
+    }
+  }, []);
 
   // Get user's current location
   useEffect(() => {
@@ -45,11 +56,116 @@ export default function StartTrip() {
     }
   }, []);
 
+  // Function to update the map when a start location is selected
+  const handleStartLocationSelect = (place: google.maps.places.PlaceResult) => {
+    if (place.formatted_address) {
+      setStartLocation(place.formatted_address);
+    }
+    if (place.geometry?.location) {
+      setMapCenter({
+        lat: place.geometry.location.lat(),
+        lng: place.geometry.location.lng(),
+      });
+    }
+  };
+
+  // Function to update the map when a destination is selected
+  const handleDestinationSelect = (place: google.maps.places.PlaceResult) => {
+    if (place.formatted_address) {
+      setDestination(place.formatted_address);
+    }
+    if (place.geometry?.location) {
+      setMapCenter({
+        lat: place.geometry.location.lat(),
+        lng: place.geometry.location.lng(),
+      });
+    }
+  };
+
+  const startTrip = async () => {
+  if (!startLocation.trim()) {
+    alert("Start location cannot be empty");
+    return;
+  }
+  if (!destination.trim()) {
+    alert("Destination cannot be empty");
+    return;
+  }
+
+  const API_URL = "http://localhost:8000";
+
+  const tripData = new FormData();
+  tripData.append("user_id", userId || "20"); // Ensure userId is available
+  tripData.append("start_location", startLocation);
+  tripData.append("destination", destination);
+
+  try {
+    const response = await fetch(`${API_URL}/start`, {
+      method: "POST",
+      body: tripData,
+    });
+
+    const result = await response.json();
+    if (response.ok) {
+      // alert(`Trip started successfully! ETA: ${result.eta} minutes`);
+
+      // ✅ Save ETA to localStorage
+      localStorage.setItem("trip_eta", result.eta);
+
+      // ✅ Navigate to trip-status page
+      router.push("/trip-info");
+    } else {
+      alert(`Failed to start trip: ${result.detail}`);
+    }
+  } catch (error) {
+    console.error("Error starting trip:", error);
+    alert("An error occurred while starting the trip.");
+  }
+};
+
+
+  // Function to start a trip
+  // const startTrip = async () => {
+  //   // if (!userId) {
+  //   //   alert("User ID is required");
+  //   //   return;
+  //   // }
+  //   if (!startLocation.trim()) {
+  //     alert("Start location cannot be empty");
+  //     return;
+  //   }
+  //   if (!destination.trim()) {
+  //     alert("Destination cannot be empty");
+  //     return;
+  //   }
+  //
+  //   const API_URL = "http://localhost:8000";
+  //
+  //   const tripData = new FormData();
+  //   tripData.append("user_id", 20);
+  //   tripData.append("start_location", startLocation);
+  //   tripData.append("destination", destination);
+  //
+  //   try {
+  //     const response = await fetch(`${API_URL}/start`, {
+  //       method: "POST",
+  //       body: tripData,
+  //     });
+  //
+  //     const result = await response.json();
+  //     if (response.ok) {
+  //       alert(`Trip started successfully! ETA: ${result.eta} minutes`);
+  //     } else {
+  //       alert(`Failed to start trip: ${result.detail}`);
+  //     }
+  //   } catch (error) {
+  //     console.error("Error starting trip:", error);
+  //     alert("An error occurred while starting the trip.");
+  //   }
+  // };
+
   return (
-    <APIProvider
-      apiKey={API_KEY}
-      solutionChannel="GMP_devsite_samples_v3_rgmautocomplete"
-    >
+    <APIProvider apiKey={API_KEY}>
       <div className="flex flex-col h-screen bg-gray-100">
         <div className="flex-1 p-6 overflow-auto">
           {/* Header with greeting and avatar */}
@@ -68,16 +184,46 @@ export default function StartTrip() {
 
           <h2 className="text-2xl font-bold mb-4">Where from?</h2>
           <div className="mb-4">
-            <PlaceAutocomplete onPlaceSelect={setSelectedPlace} />
+            <PlaceAutocomplete onPlaceSelect={handleStartLocationSelect} />
           </div>
 
           <h2 className="text-2xl font-bold mb-4">Where to?</h2>
           <div className="mb-4">
-            <PlaceAutocomplete onPlaceSelect={setSelectedPlace} />
+            <PlaceAutocomplete onPlaceSelect={handleDestinationSelect} />
           </div>
 
-          {/* Google Map with current location and autocomplete marker */}
-          <div className="mb-2">
+          <div>
+            <h2 className="text-2xl font-bold mb-4">Intervals for check in? (min)</h2>
+            <div className="mb-4">
+              <select
+                className="w-full p-2 border rounded-md bg-white"
+                value={selectedInterval}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                  setSelectedInterval(Number(e.target.value))
+                }
+              >
+                <option value={0}>Don't check-in</option>
+                {Array.from({ length: 120 }, (_, i) => (
+                  <option key={i + 1} value={i + 1}>
+                    {i + 1}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Start Trip Button */}
+          <button
+            onClick={startTrip}
+            className="w-full bg-white text-black text-lg font-semibold py-3 px-6 rounded-lg
+                       border border-gray-300 hover:bg-gray-100 active:scale-95 transition duration-200
+                       ease-in-out shadow-md hover:shadow-lg"
+          >
+            Start Trip
+          </button>
+
+          {/* Google Map */}
+          <div className="mb-2 mt-6">
             <h3 className="text-gray-500 uppercase text-sm tracking-wider mb-2">
               Location - Destination
             </h3>
@@ -89,13 +235,10 @@ export default function StartTrip() {
                 gestureHandling="greedy"
                 disableDefaultUI={true}
               >
-                <AdvancedMarker ref={markerRef} position={mapCenter} />
+                <AdvancedMarker position={mapCenter} />
                 <MapControl position={ControlPosition.TOP}>
-                  <div className="autocomplete-control">
-                    {/* Optional extra autocomplete */}
-                  </div>
+                  <div className="autocomplete-control"></div>
                 </MapControl>
-                <MapHandler place={selectedPlace} marker={marker} />
               </Map>
             </div>
           </div>
@@ -106,62 +249,34 @@ export default function StartTrip() {
   );
 }
 
-// MapHandler moves the map viewport and marker when a new place is selected.
-interface MapHandlerProps {
-  place: google.maps.places.PlaceResult | null;
-  marker: google.maps.marker.AdvancedMarkerElement | null;
-}
-
-const MapHandler = ({ place, marker }: MapHandlerProps) => {
-  const map = useMap();
-
-  useEffect(() => {
-    if (!map || !place || !marker) return;
-
-    if (place.geometry?.viewport) {
-      map.fitBounds(place.geometry.viewport);
-    }
-    marker.position = place.geometry?.location;
-  }, [map, place, marker]);
-
-  return null;
-};
-
-// PlaceAutocomplete uses the Google Maps Places library to enable autocomplete.
+// PlaceAutocomplete component
 interface PlaceAutocompleteProps {
-  onPlaceSelect: (place: google.maps.places.PlaceResult | null) => void;
+  onPlaceSelect: (place: google.maps.places.PlaceResult) => void;
 }
 
 const PlaceAutocomplete = ({ onPlaceSelect }: PlaceAutocompleteProps) => {
-  const [placeAutocomplete, setPlaceAutocomplete] =
-    useState<google.maps.places.Autocomplete | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const places = useMapsLibrary("places");
 
   useEffect(() => {
     if (!places || !inputRef.current) return;
 
-    const options = {
-      fields: ["geometry", "name", "formatted_address"],
-    };
-
-    setPlaceAutocomplete(new places.Autocomplete(inputRef.current, options));
-  }, [places]);
-
-  useEffect(() => {
-    if (!placeAutocomplete) return;
-
-    placeAutocomplete.addListener("place_changed", () => {
-      onPlaceSelect(placeAutocomplete.getPlace());
+    const autocomplete = new places.Autocomplete(inputRef.current, {
+      fields: ["geometry", "formatted_address"],
     });
-  }, [onPlaceSelect, placeAutocomplete]);
+
+    autocomplete.addListener("place_changed", () => {
+      const place = autocomplete.getPlace();
+      onPlaceSelect(place);
+    });
+  }, [places, onPlaceSelect]);
 
   return (
     <div className="autocomplete-container">
       <input
         ref={inputRef}
         className="w-full py-3 px-4 bg-white rounded-full text-gray-700 focus:outline-none"
-        placeholder="Enter your destination"
+        placeholder="Enter location"
       />
     </div>
   );
