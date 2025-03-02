@@ -161,30 +161,30 @@ class ETARequest(BaseModel):
     start: str
     destination: str
 
-
 def calc_eta_sync(start: str, destination: str) -> int:
     """
     Synchronous function that calculates ETA using the Google Maps Distance Matrix API.
     Applies a 20% safety buffer and returns the ETA in minutes.
     """
-    params = {
-        "origins": start,
-        "destinations": destination,
-        "key": GOOGLE_MAPS_API_KEY,
-        "mode": "driving"
-    }
+    # params = {
+    #     "origins": start,
+    #     "destinations": destination,
+    #     "key": GOOGLE_MAPS_API_KEY,
+    #     "mode": "driving"
+    # }
 
-    response = requests.get(GOOGLE_MAPS_MATRIX_API, params=params)
-    data = response.json()
-
-    # Check if the API call was successful and a route was found.
+    response = client.distance_matrix(origins=start, destinations=destination, mode="driving")
+    print(response)
+    # The response is already a dictionary, no need to call json()
+    data = response
+    
     if data.get("status") != "OK":
         raise Exception("Error with Distance Matrix API: " + data.get("error_message", "Unknown error"))
-
+    
     element = data["rows"][0]["elements"][0]
     if element.get("status") != "OK":
         raise Exception("No route found: " + element.get("status", "Unknown error"))
-
+    
     duration_in_seconds = element["duration"]["value"]
     buffered_duration = duration_in_seconds * 1.2  # Apply 20% safety buffer
     eta_minutes = math.ceil(buffered_duration / 60)
