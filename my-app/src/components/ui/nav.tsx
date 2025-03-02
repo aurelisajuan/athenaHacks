@@ -6,7 +6,7 @@ import { MapPin, Bell, Users } from "lucide-react";
 const Nav: React.FC = () => {
   // Trip starts as active; other buttons are inactive.
   const [activeIcons, setActiveIcons] = useState({
-    trip: true,
+    trip: false,
     alert: false,
     contact: false,
   });
@@ -15,7 +15,7 @@ const Nav: React.FC = () => {
     // When a button is clicked, mark it active.
     setActiveIcons((prev) => ({
       ...prev,
-      [icon]: true,
+      [icon]: false,
     }));
   };
 
