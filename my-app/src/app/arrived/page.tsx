@@ -25,10 +25,6 @@ export default function ArrivalCheckIn() {
     // Emergency call handling would go here
   };
 
-  const handleTripStatusClick = () => {
-    router.push("/");
-  };
-
   // Track the user’s real-time location
   const [currentLocation, setCurrentLocation] =
     useState<google.maps.LatLngLiteral | null>(null);
@@ -102,9 +98,7 @@ export default function ArrivalCheckIn() {
           {/* MAP SECTION */}
           <div className="mb-2 pb-6">
             {currentLocation ? (
-              <APIProvider
-                apiKey={API_KEY}
-              >
+              <APIProvider apiKey={API_KEY}>
                 <Map
                   mapId="<716aee15e4ac08d3>"
                   center={currentLocation}

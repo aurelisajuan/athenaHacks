@@ -18,12 +18,12 @@ const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
 // Default location (USC)
 const USC_LAT_LNG = { lat: 34.0224, lng: -118.2851 };
+const userName = "Lisa";
 
 // Main component integrating UI and Google Maps autocomplete
 export default function StartTrip() {
   const router = useRouter();
 
-  const [userName, setUserName] = useState("Lisa");
   const [startLocation, setStartLocation] = useState<string>("");
   const [destination, setDestination] = useState<string>("");
   const [mapCenter, setMapCenter] = useState(USC_LAT_LNG);
@@ -73,46 +73,46 @@ export default function StartTrip() {
   };
 
   const startTrip = async () => {
-  if (!startLocation.trim()) {
-    alert("Start location cannot be empty");
-    return;
-  }
-  if (!destination.trim()) {
-    alert("Destination cannot be empty");
-    return;
-  }
-
-  const API_URL = "http://https://95fd-207-151-52-106.ngrok-free.app";
-
-  const tripData = new FormData();
-  tripData.append("user_id", "21"); // Ensure userId is available
-  tripData.append("start_location", startLocation);
-  tripData.append("destination", destination);
-  tripData.append("interval", selectedInterval.toString());
-
-  try {
-    const response = await fetch(`${API_URL}/start`, {
-      method: "POST",
-      body: tripData,
-    });
-
-    const result = await response.json();
-    if (response.ok) {
-      // alert(`Trip started successfully! ETA: ${result.eta} minutes`);
-
-      // ✅ Save ETA to localStorage
-      localStorage.setItem("trip_eta", result.eta);
-
-      // ✅ Navigate to trip-status page
-      router.push("/trip-info");
-    } else {
-      alert(`Failed to start trip: ${result.detail}`);
+    if (!startLocation.trim()) {
+      alert("Start location cannot be empty");
+      return;
     }
-  } catch (error) {
-    console.error("Error starting trip:", error);
-    alert("An error occurred while starting the trip.");
-  }
-};
+    if (!destination.trim()) {
+      alert("Destination cannot be empty");
+      return;
+    }
+
+    const API_URL = "http://https://95fd-207-151-52-106.ngrok-free.app";
+
+    const tripData = new FormData();
+    tripData.append("user_id", "21"); // Ensure userId is available
+    tripData.append("start_location", startLocation);
+    tripData.append("destination", destination);
+    tripData.append("interval", selectedInterval.toString());
+
+    try {
+      const response = await fetch(`${API_URL}/start`, {
+        method: "POST",
+        body: tripData,
+      });
+
+      const result = await response.json();
+      if (response.ok) {
+        // alert(`Trip started successfully! ETA: ${result.eta} minutes`);
+
+        // ✅ Save ETA to localStorage
+        localStorage.setItem("trip_eta", result.eta);
+
+        // ✅ Navigate to trip-status page
+        router.push("/trip-info");
+      } else {
+        alert(`Failed to start trip: ${result.detail}`);
+      }
+    } catch (error) {
+      console.error("Error starting trip:", error);
+      alert("An error occurred while starting the trip.");
+    }
+  };
 
   return (
     <APIProvider apiKey={API_KEY}>
@@ -143,7 +143,9 @@ export default function StartTrip() {
           </div>
 
           <div>
-            <h2 className="text-2xl font-bold mb-4">Intervals for check in? (min)</h2>
+            <h2 className="text-2xl font-bold mb-4">
+              Intervals for check in? (min)
+            </h2>
             <div className="mb-4">
               <select
                 className="w-full p-2 border rounded-md bg-white"
@@ -153,22 +155,21 @@ export default function StartTrip() {
                 }
               >
                 <option value={0}>Don't check-in</option>
-                  <option key={.33} value={.33}>
-                      {.33}
-                  </option>
-                  <option key={1} value={1}>
-                    {1}
-                  </option>
-                  <option key={5} value={5}>
-                    {5}
-                  </option>
-                  <option key={30} value={30}>
-                    {60}
-                  </option>
-                  <option key={60} value={60}>
-                    {60}
-                  </option>
-              
+                <option key={0.33} value={0.33}>
+                  {0.33}
+                </option>
+                <option key={1} value={1}>
+                  {1}
+                </option>
+                <option key={5} value={5}>
+                  {5}
+                </option>
+                <option key={30} value={30}>
+                  {60}
+                </option>
+                <option key={60} value={60}>
+                  {60}
+                </option>
               </select>
             </div>
           </div>

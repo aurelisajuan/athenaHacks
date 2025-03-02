@@ -4,11 +4,7 @@ import { useRef, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { X, StopCircle, RefreshCw, User } from "lucide-react";
 
-interface VideoUpdateProps {
-  onVerify?: () => void;
-}
-
-export default function VideoUpdate({ onVerify }: VideoUpdateProps) {
+export default function VideoUpdate() {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -146,14 +142,18 @@ export default function VideoUpdate({ onVerify }: VideoUpdateProps) {
     setIsVerifying(true);
 
     // Convert Blob to File
-    const videoFile = new File([videoBlob], "checkin_video.mp4", { type: "video/mp4" });
+    const videoFile = new File([videoBlob], "checkin_video.mp4", {
+      type: "video/mp4",
+    });
 
     const formData = new FormData();
     formData.append("user_id", "21");
     formData.append("file", videoFile);
 
     // Use environment variable for backend URL
-    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://https://95fd-207-151-52-106.ngrok-free.app";
+    const BACKEND_URL =
+      process.env.NEXT_PUBLIC_BACKEND_URL ||
+      "http://https://95fd-207-151-52-106.ngrok-free.app";
     const API_ENDPOINT = `${BACKEND_URL}/check-in`;
 
     try {
@@ -187,9 +187,6 @@ export default function VideoUpdate({ onVerify }: VideoUpdateProps) {
       setIsVerifying(false);
     }
   };
-
-
-
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col">
