@@ -148,10 +148,7 @@ async def save_trip(trip: TripRequest):
     if not trip.destination.strip():
         raise HTTPException(status_code=400, detail="Destination cannot be empty")
 
-    eta = await calc_eta(trip.start_location, trip.destination)
-
     trip_data = trip.dict()
-    trip_data["eta"] = eta
 
     # Insert trip data into Supabase
     response = supabase.table("trips").insert(trip_data).execute()
@@ -160,6 +157,42 @@ async def save_trip(trip: TripRequest):
         return {"message": "Trip saved successfully", "trip_id": response.data[0]["id"]}
     else:
         raise HTTPException(status_code=500, detail="Failed to save trip")
+
+
+class TripStartRequest(BaseModel):
+    user_id: int
+    trip_id: int
+
+
+@app.post("/start")
+async def save_trip(trip: TripStartRequest):
+    if not trip.user_id:
+        raise HTTPException(status_code=400, detail="User ID is required")
+    if not trip.trip_id:
+        raise HTTPException(status_code=400, detail="Trip ID is required")
+
+    response = supabase.table("trips").select("*").eq("id", trip.trip_id).eq("user_id", trip.user_id).execute()
+
+    if not response.data:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    trip_data = response.data[0]
+    start_location = trip_data["start_location"]
+    destination = trip_data["destination"]
+
+    eta = await calc_eta(start_location, destination)
+
+    trip_data = trip.dict()
+    trip_data["eta"] = eta
+
+    update_response = supabase.table("trips").update({"eta": eta}).eq("id", trip.trip_id).execute()
+
+    if update_response.data:
+        return {
+            "eta": eta,
+        }
+    else:
+        raise HTTPException(status_code=500, detail="Failed to update trip")
 
 
 def get_embeddings(user_id: int):
