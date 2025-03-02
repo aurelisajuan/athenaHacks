@@ -6,7 +6,7 @@ import uvicorn
 from functools import partial
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Form, Request
+from fastapi import FastAPI, HTTPException, Form, Request, UploadFile, File
 from pydantic import BaseModel, EmailStr
 from supabase import create_client, Client
 from fastapi.middleware.cors import CORSMiddleware
@@ -99,18 +99,32 @@ async def login(user: LoginRequest):
 
 
 @app.post("/get-ref-video")
-async def get_ref_video(request: Request):
+async def get_ref_video(user_id: int = Form(...), file: UploadFile = File(...)):
     try:
-        video_bytes = await request.body()  # Read the video bytes
-        path = "demos/serena_reference_video.mp4"
+        if not user_id:
+            return {"error": "User ID is required"}
+
+        path = f"user_data/{user_id}_ref_vid.mp4"
 
         async with aiofiles.open(path, "wb") as video_file:
-            await video_file.write(video_bytes)
+            content = await file.read()
+            await video_file.write(content)
 
-        voice_path = process_voice(path)
-        face_path = process_image(path)
+        voice_embedding = process_voice(path, user_id)
+        face_embedding = process_image(path, user_id)
 
         # save to database
+        response = supabase.table("users").update({
+            "voice_embed": voice_embedding.tolist(),
+            "face_embed": face_embedding.tolist()
+        }).eq("id", user_id).execute()
+
+        if response.count == 0:
+            raise HTTPException(status_code=404, detail="User ID not found in database")
+
+        return {
+            "message": "Reference video processed successfully"
+        }
 
     except Exception as e:
         return {"error": str(e)}
