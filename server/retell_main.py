@@ -19,7 +19,7 @@ async def websocket_handler(websocket: WebSocket, call_id: str):
 
     # send first message to signal ready of server
     response_id = 0
-    first_event = llm_client.draft_begin_messsage()
+    first_event = await llm_client.draft_begin_messsage()
     await websocket.send_text(json.dumps(first_event))
 
     async def stream_response(request):
