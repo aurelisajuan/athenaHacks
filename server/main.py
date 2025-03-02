@@ -133,6 +133,8 @@ async def get_ref_video(user_id: int = Form(...), file: UploadFile = File(...)):
         voice_embed = process_voice(path, user_id)
         face_embed = process_image(path, user_id)
 
+
+
         # save to database
         response = supabase.table("users").update({
             "voice_embed": voice_embed.tolist(),

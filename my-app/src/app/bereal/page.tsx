@@ -127,7 +127,8 @@ export default function VideoUpdate({ onVerify }: VideoUpdateProps) {
   //   }
   // };
 
-  const userId = localStorage.getItem("user_id");
+  // const userId = localStorage.getItem("user_id");
+  const userId = 21;
 
   // Reset recording
   const handleReset = () => {

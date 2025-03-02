@@ -30,14 +30,15 @@ export default function StartTrip() {
   const [selectedInterval, setSelectedInterval] = useState(0);
 
   // const userId = localStorage.getItem("user_id"); // Retrieve stored user ID
-  const [userId, setUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const storedUserId = localStorage.getItem("user_id");
-      setUserId(storedUserId);
-    }
-  }, []);
+  // const [userId, setUserId] = useState<string | null>(null);
+  //
+  // useEffect(() => {
+  //   if (typeof window !== "undefined") {
+  //     const storedUserId = localStorage.getItem("user_id");
+  //     setUserId(storedUserId);
+  //   }
+  // }, []);
+  const userId = 21;
 
   // Get user's current location
   useEffect(() => {
