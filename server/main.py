@@ -152,27 +152,6 @@ class TripRequest(BaseModel):
     destination: str
     interval: int
 
-
-@app.post("/save-trip")
-async def save_trip(trip: TripRequest):
-    if not trip.user_id:
-        raise HTTPException(status_code=400, detail="User ID is required")
-    if not trip.start_location.strip():
-        raise HTTPException(status_code=400, detail="Start location cannot be empty")
-    if not trip.destination.strip():
-        raise HTTPException(status_code=400, detail="Destination cannot be empty")
-
-    trip_data = trip.dict()
-
-    # Insert trip data into Supabase
-    response = supabase.table("trips").insert(trip_data).execute()
-
-    if response.data:
-        return {"message": "Trip saved successfully", "trip_id": response.data[0]["id"]}
-    else:
-        raise HTTPException(status_code=500, detail="Failed to save trip")
-
-
 class TripStartRequest(BaseModel):
     user_id: int
     trip_id: int
@@ -192,41 +171,48 @@ async def scheduled_call(delay: float, mode: int, trip_data: dict, traveler_data
     )
 
 @app.post("/start")
-async def save_trip(trip: TripStartRequest):
-    if not trip.user_id:
-        raise HTTPException(status_code=400, detail="User ID is required")
-    if not trip.trip_id:
-        raise HTTPException(status_code=400, detail="Trip ID is required")
-
-    response = supabase.table("trips").select("*").eq("id", trip.trip_id).eq("user_id", trip.user_id).execute()
-
-    # Grab user details
-    user_response = supabase.table("users").select("*").eq("id", trip.user_id).execute()
-
-    if not response.data:
-        raise HTTPException(status_code=404, detail="Trip not found")
-
-    trip_data = response.data[0]
-    start_location = trip_data["start_location"]
-    destination = trip_data["destination"]
+async def save_trip(user_id: int = Form(...), start_location: str = Form(...),destination: str = Form(...)):
+    """
+    Combines saving a new trip and starting it.
+        1. Calculates ETA (with a 20% safety buffer) using Google Maps.
+        2. Inserts the trip into the DB with status "in progress" and the calculated ETA.
+        3. Retrieves the inserted trip and user details.
+        4. Schedules timers (e.g., call at 50% and 120% of ETA).
+    """
 
     eta_minutes = await calc_eta(start_location, destination)
+    eta_seconds = eta_minutes * 60
 
-    trip_data = trip.dict()
-    trip_data["eta"] = eta_minutes
+    # add to db
+    insert_response = supabase.table("trips").insert({
+        "user_id": user_id,
+        "start_location": start_location,
+        "destination": destination,
+        "status": "in progress",
+        "eta": eta_minutes
+    }).execute()
 
-    update_response = supabase.table("trips").update({"eta": eta_minutes}).eq("id", trip.trip_id).execute()
+    if not insert_response.data:
+        raise HTTPException(status_code=500, detail="Failed to insert trip")
+    
+    # get trip id 
+    trip_data = insert_response.data[0]
+    trip_id = trip_data["id"]
 
-    if update_response.data:
+    user_response = supabase.table("users").select("*").eq("id", user_id).execute()
+    if not user_response.data:
+        raise HTTPException(status_code=404, detail="User not found")
+    user_data = user_response.data[0]
+
+    if user_response.data:
         # TODO: Here, we set up three timers
         # One timer at 50% eta, to call the user
         # Two timer at 120% eta to call the user
         # Three timer at 100% eta to send a push notification to the user
 
         retell_number = "+14435668609"
-        user_number = "+14435668609" # TODO: Change this to demo number
-
-        eta_seconds = eta_minutes * 60
+        user_number = "+19095725983" 
+        # user_number = user_data.get("phone_num") or "+19095725983"
 
         # Schedule calls:
         # Scenario 1: Call at 50% of ETA (mode 0)
@@ -244,7 +230,9 @@ async def save_trip(trip: TripStartRequest):
 
 
         return {
+            "trip_id": trip_id,
             "eta": eta_minutes,
+            "message": "Trip started successfully"
         }
     else:
         raise HTTPException(status_code=500, detail="Failed to update trip")
