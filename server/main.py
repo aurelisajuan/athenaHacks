@@ -21,6 +21,7 @@ from recognition import recognition
 from process_video import *
 
 import traceback
+from datetime import datetime
 
 import inspect
 
@@ -193,7 +194,8 @@ async def save_trip(user_id: int = Form(...), start_location: str = Form(...),de
         "start_location": start_location,
         "destination": destination,
         "status": "in progress",
-        "eta": eta_minutes
+        "eta": eta_minutes,
+        "start_time": datetime.now().isoformat(),
     }).execute()
 
     if not insert_response.data:
@@ -215,8 +217,8 @@ async def save_trip(user_id: int = Form(...), start_location: str = Form(...),de
         # Three timer at 100% eta to send a push notification to the user
 
         retell_number = "+14435668609"
-        user_number = "+19095725983" 
-        # user_number = user_data.get("phone_num") or "+19095725983"
+        # user_number = user_data.get("phone_num") or "+19095725988"
+        user_number = "+19095725988"
 
         # Schedule calls:
         # Scenario 1: Call at 50% of ETA (mode 0)
@@ -498,7 +500,10 @@ async def handle_webhook(request: Request):
 
                 # Notify the emergency contact
                 retell_number = "+14435668609"
-                user_number = "+19095725988" 
+                user_number = "+19095725988"
+                metadata = post_data.get("call", {}).get("metadata", {})
+                emergency_contact = metadata.get("emergency_contact", {})
+                user_number = emergency_contact.get("phone_number") or "+15615709730"
 
                 try:
                     # emergency 

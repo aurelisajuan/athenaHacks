@@ -42,6 +42,7 @@ class LlmClient:
                     "destination": "456 Elm St",
                     "eta": 45,  # in minutes, including 20% buffer
                     "status": "in progress"
+                    "start time": date.today().isoformat(),
                 }
             users (Dict): Traveler details, e.g.:
                 {
