@@ -1,5 +1,7 @@
 import math
 import asyncio
+
+import googlemaps
 import uvicorn
 from functools import partial
 import ast
@@ -21,9 +23,10 @@ load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_API_KEY = os.getenv("SUPABASE_API_KEY")
 GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
-GOOGLE_MAPS_MATRIX_API = os.getenv("GOOGLE_MAPS_API_KEY")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_API_KEY)
+
+client = googlemaps.Client(key=GOOGLE_MAPS_API_KEY)
 
 # Enable CORS for frontend requests
 app.add_middleware(
@@ -102,7 +105,7 @@ async def get_ref_video(user_id: int = Form(...), file: UploadFile = File(...)):
     path = f"user_data/{user_id}_ref_vid.mp4"
     try:
         if not user_id:
-            return {"error": "User ID is required"}
+            raise HTTPException(status_code=400, detail="User ID is required")
 
         async with aiofiles.open(path, "wb") as video_file:
             content = await file.read()
@@ -119,35 +122,77 @@ async def get_ref_video(user_id: int = Form(...), file: UploadFile = File(...)):
 
         if response.count == 0:
             raise HTTPException(status_code=404, detail="User ID not found in database")
-        os.remove(path)
+        safe_remove(path)
         return {
             "message": "Reference video processed successfully"
         }
 
     except Exception as e:
-        os.remove(path)
+        safe_remove(path)
         return {"error": str(e)}
 
 
-@app.post("/get-origin")
-async def get_origin(origin: str = Form(...)):
-    if not origin.strip():
-        raise HTTPException(status_code=400, detail="Origin cannot be empty")
-    return {"received_message": origin}
+class TripRequest(BaseModel):
+    user_id: int
+    start_location: str
+    destination: str
+    interval: int
 
 
-@app.post("/get-destination")
-async def get_destination(destination: str = Form(...)):
-    if not destination.strip():
+@app.post("/save-trip")
+async def save_trip(trip: TripRequest):
+    if not trip.user_id:
+        raise HTTPException(status_code=400, detail="User ID is required")
+    if not trip.start_location.strip():
+        raise HTTPException(status_code=400, detail="Start location cannot be empty")
+    if not trip.destination.strip():
         raise HTTPException(status_code=400, detail="Destination cannot be empty")
-    return {"received_message": destination}
+
+    trip_data = trip.dict()
+
+    # Insert trip data into Supabase
+    response = supabase.table("trips").insert(trip_data).execute()
+
+    if response.data:
+        return {"message": "Trip saved successfully", "trip_id": response.data[0]["id"]}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to save trip")
 
 
-@app.post("/get-interval")
-async def get_interval(time: int = Form(...)):
-    if time <= 0:
-        raise HTTPException(status_code=400, detail="Interval must be greater than 0")
-    return {"received_message": time}
+class TripStartRequest(BaseModel):
+    user_id: int
+    trip_id: int
+
+
+@app.post("/start")
+async def save_trip(trip: TripStartRequest):
+    if not trip.user_id:
+        raise HTTPException(status_code=400, detail="User ID is required")
+    if not trip.trip_id:
+        raise HTTPException(status_code=400, detail="Trip ID is required")
+
+    response = supabase.table("trips").select("*").eq("id", trip.trip_id).eq("user_id", trip.user_id).execute()
+
+    if not response.data:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    trip_data = response.data[0]
+    start_location = trip_data["start_location"]
+    destination = trip_data["destination"]
+
+    eta = await calc_eta(start_location, destination)
+
+    trip_data = trip.dict()
+    trip_data["eta"] = eta
+
+    update_response = supabase.table("trips").update({"eta": eta}).eq("id", trip.trip_id).execute()
+
+    if update_response.data:
+        return {
+            "eta": eta,
+        }
+    else:
+        raise HTTPException(status_code=500, detail="Failed to update trip")
 
 
 def get_embeddings(user_id: int):
@@ -180,7 +225,7 @@ async def check_in(user_id: int = Form(...), file: UploadFile = File(...)):
     path = f"user_data/{user_id}_checkin_vid.mp4"
     try:
         if not user_id:
-            return {"error": "User ID is required"}
+            HTTPException(status_code=400, detail="User ID is required")
 
         async with aiofiles.open(path, "wb") as video_file:
             content = await file.read()
@@ -191,19 +236,14 @@ async def check_in(user_id: int = Form(...), file: UploadFile = File(...)):
         voice_embed2 = process_voice(path, user_id)
         face_embed2 = process_image(path, user_id)
 
-        result = recognition(voice_embed1, voice_embed2,face_embed1, face_embed2)
+        result = recognition(voice_embed1, voice_embed2, face_embed1, face_embed2)
 
-        os.remove(path)
+        safe_remove(path)
         return {"matched": result}
 
     except Exception as e:
-        os.remove(path)
+        safe_remove(path)
         return {"error": str(e)}
-
-
-class ETARequest(BaseModel):
-    start: str
-    destination: str
 
 
 def calc_eta_sync(start: str, destination: str) -> int:
@@ -242,6 +282,11 @@ async def calc_eta(start: str, destination: str) -> int:
     """
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(None, partial(calc_eta_sync, start, destination))
+
+
+class ETARequest(BaseModel):
+    start: str
+    destination: str
 
 
 # Test endpoint to check the helper function
