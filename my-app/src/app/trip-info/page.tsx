@@ -1,8 +1,10 @@
 // page.tsx (or TripInfo.tsx)
-"include client";
+"use client";
 
+import React, { useState } from "react";
+import NavTask from "@/components/ui/nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MessageCircle, Footprints, MapPin, Bell, Users } from "lucide-react";
+import { MessageCircle, Footprints } from "lucide-react";
 import Head from "next/head";
 import { TripDetails } from "@/components/ui/tripDetails";
 import { SafeTravel } from "@/components/ui/safeTravel";
@@ -42,10 +44,25 @@ const tripData: TripData = {
   ],
 };
 
+interface ContactItemProps {
+  contact: EmergencyContact;
+  isSelected: boolean;
+  toggleContact: (contactId: string) => void;
+}
+
 // Contact Item Component
-const ContactItem = ({ contact }: { contact: EmergencyContact }) => {
+const ContactItem = ({
+  contact,
+  isSelected,
+  toggleContact,
+}: ContactItemProps) => {
   return (
-    <div className="flex items-center justify-between bg-white rounded-full p-7 shadow-sm mb-3">
+    <div
+      onClick={() => toggleContact(contact.id)}
+      className={`cursor-pointer flex items-center justify-between rounded-full p-7 shadow-sm mb-3 transition-colors ${
+        isSelected ? "bg-pink-500 text-white" : "bg-white text-gray-800"
+      }`}
+    >
       <div className="flex items-center gap-3">
         <Avatar className="w-10 h-10">
           <AvatarImage src="./sage.webp" />
@@ -61,9 +78,23 @@ const ContactItem = ({ contact }: { contact: EmergencyContact }) => {
 };
 
 export default function TripInfo() {
-  const notifyContact = (contactId: string) => {
-    console.log(`Notifying contact with ID: ${contactId}`);
+  const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
+  const toggleContact = (contactId: string) => {
+    setSelectedContacts((prev) => {
+      if (prev.includes(contactId)) {
+        return prev.filter((id) => id !== contactId);
+      }
+      if (prev.length < 2) {
+        return [...prev, contactId];
+      }
+      return prev;
+    });
   };
+
+  const selectedNames = tripData.emergencyContacts
+    .filter((c) => selectedContacts.includes(c.id))
+    .map((c) => c.name)
+    .join(" and ");
 
   return (
     <div className="flex flex-col h-screen bg-gray-100">
@@ -86,48 +117,45 @@ export default function TripInfo() {
         </div>
       </div>
 
-      {/* Use the new TripDetails component */}
-      <TripDetails
-        destination={tripData.destination}
-        estimatedArrival={tripData.estimatedArrival}
-        travelTime={tripData.travelTime}
-      />
+      <div className="px-6 mb-4">
+        <h2 className="text-lg font-bold mb-1">Safe Travel</h2>
+        {selectedNames ? (
+          <p className="text-sm text-gray-700">
+            Call <strong>{selectedNames}</strong> at{" "}
+            <strong>{tripData.estimatedArrival}</strong> if there is an
+            emergency
+          </p>
+        ) : (
+          <p className="text-sm text-gray-700">
+            Select up to two emergency contacts below
+          </p>
+        )}
+      </div>
 
       {/* Emergency Contacts */}
       <section className="px-5 flex-1">
         <p className="text-gray-500 uppercase text-sm font-bold mb-4">
-          NOTIFY EMERGENCY CONTACTS
+          Notify Emergency Contacts
         </p>
         <div>
           {tripData.emergencyContacts.map((contact) => (
-            <ContactItem key={contact.id} contact={contact} />
+            <ContactItem
+              key={contact.id}
+              contact={contact}
+              isSelected={selectedContacts.includes(contact.id)}
+              toggleContact={toggleContact}
+            />
           ))}
         </div>
       </section>
 
-      {/* Bottom navigation */}
-      <div className="flex justify-around items-center py-3 bg-white">
-        <button className="flex flex-col items-center">
-          <a href="/trip-info" className="text-xs flex flex-col items-center">
-            <div className="w-8 h-8 flex items-center justify-center">
-              <MapPin className="h-6 w-6 text-pink-500" />
-            </div>
-            <span className="text-xs">Trip Status</span>
-          </a>
-        </button>
-        <button className="flex flex-col items-center">
-          <div className="w-8 h-8 flex items-center justify-center">
-            <Bell className="h-6 w-6" />
-          </div>
-          <span className="text-xs">Alert</span>
-        </button>
-        <button className="flex flex-col items-center">
-          <div className="w-8 h-8 flex items-center justify-center">
-            <Users className="h-6 w-6" />
-          </div>
-          <span className="text-xs">My Contact</span>
-        </button>
-      </div>
+      {/* <TripDetails
+        destination={tripData.destination}
+        estimatedArrival={tripData.estimatedArrival}
+        travelTime={tripData.travelTime}
+      /> */}
+
+      <NavTask />
     </div>
   );
 }
