@@ -171,12 +171,16 @@ export default function VideoUpdate({ onVerify }: VideoUpdateProps) {
       const data = await response.json();
       console.log("Check-in response:", data);
 
-      if (data.matched) {
-        console.log("Verification successful");
-        router.push("/");
-      } else {
-        console.error("Verification failed");
-      }
+      alert("Verification successful");
+      router.push("/trip-info");
+
+      // if (data.matched) {
+      //   console.log("Verification successful");
+      //   router.push("/");
+      // } else {
+      //   alert("Verification failed")
+      //   // console.error("Verification failed");
+      // }
     } catch (error) {
       console.error("Error uploading video:", error);
     } finally {

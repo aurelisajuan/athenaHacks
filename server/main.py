@@ -48,14 +48,21 @@ retell = Retell(api_key=os.environ["RETELL_API_KEY"])
 client = googlemaps.Client(key=GOOGLE_MAPS_API_KEY)
 
 # Enable CORS for frontend requests
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["http://localhost:3000"],  # Next.js runs on 3000
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Next.js runs on 3000
+    allow_origins=["*"],  # Change "*" to your frontend URL for better security
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 class SignUpRequest(BaseModel):
     first_name: str
@@ -130,10 +137,10 @@ async def get_ref_video(user_id: int = Form(...), file: UploadFile = File(...)):
             content = await file.read()
             await video_file.write(content)
 
+        print("File uploaded successfully:", path)
+
         voice_embed = process_voice(path, user_id)
         face_embed = process_image(path, user_id)
-
-
 
         # save to database
         response = supabase.table("users").update({
@@ -143,7 +150,8 @@ async def get_ref_video(user_id: int = Form(...), file: UploadFile = File(...)):
 
         if response.count == 0:
             raise HTTPException(status_code=404, detail="User ID not found in database")
-        safe_remove(path)
+
+        # safe_remove(path)
         return {
             "message": "Reference video processed successfully"
         }
