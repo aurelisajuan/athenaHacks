@@ -11,12 +11,21 @@ mid_checkin_prompt = """
     """
 
 # Modified Final check-in prompt.
+# final_checkin_prompt = """
+#     Task: At the final check-in phase, the traveler's status will initially be flagged as "alert". 
+    
+#     If the traveler has not completed the video-based check-in within 15 minutes of the estimated arrival time, automatically initiate an additional phone call reminder.
+    
+#     During this call, double-check with the traveler to see if they simply forgot to check in. If the traveler confirms that they are safe, update their status to "safe" and acknowledge the confirmation before ending the call. 
+    
+#     However, if the traveler does not confirm their safety or indicates an issue, maintain their status as "alert" and escalate the situation by notifying the emergency contact with the latest time update and a brief summary of the conversation.
+#     """
+
 final_checkin_prompt = """
-    Task: At the final check-in phase, the traveler's status will initially be flagged as "alert". 
-    
-    If the traveler has not completed the video-based check-in within 15 minutes of the estimated arrival time, automatically initiate an additional phone call reminder.
-    
-    During this call, double-check with the traveler to see if they simply forgot to check in. If the traveler confirms that they are safe, update their status to "safe" and acknowledge the confirmation before ending the call. 
-    
-    However, if the traveler does not confirm their safety or indicates an issue, maintain their status as "alert" and escalate the situation by notifying the emergency contact with the latest time update and a brief summary of the conversation.
+    Task: At the final check-in phase, the traveler's status remains as set during the mid-journey check-in. However, if the traveler has not completed the video-based check-in within 15 minutes of the estimated arrival time, automatically initiate an additional phone call reminder.
+
+    During this call:
+    - If the traveler does not answer, update their status to "alert" and notify the emergency contact with the latest time update and a brief summary of the conversation.
+    - If the traveler answers and confirms that they are safe, update their status to "completed" to indicate the journey has successfully ended, and acknowledge their confirmation before ending the call.
     """
+
