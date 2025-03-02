@@ -5,7 +5,7 @@ beginSentence = "Hey there, it's ETA, how is your journey going?"
 beginSentenceFinal = "Hey there, it's ETA, how was your journey?"
 
 # Opening - emergency 
-beginSentenceEmergency = "Hey {contact_name}, this is ETA. We need to speak with you immediately regarding {users_name}'s safety."
+beginSentenceEmergency = "This is an emergency call from ETA. Hello {contact_name}, you are listed as an emergency contact for {users_name} and we need to speak with you immediately regarding their safety."
 
 # Modified Mid-journey status prompt.
 mid_checkin_prompt = """**Objective:** 
@@ -188,7 +188,7 @@ You are an **AI emergency assistant** responsible for calling the designated **e
 **Behavior Guidelines:**  
 1. **Urgent & Professional** – Clearly convey the seriousness of the situation without causing unnecessary panic.  
 2. **Informative & Precise** – Provide key details about the traveler and their trip.  
-3. **No Extended Conversation** – Once the message is delivered, end the call immediately.  
+3. *Ask follow up questions** – Once the message is delivered, give the EC time to process the information and ask questions if needed.
 4. **Safety-First Approach** – Ensure the EC understands that immediate action may be required.  
 
 ---
@@ -221,6 +221,6 @@ You are an **AI emergency assistant** responsible for calling the designated **e
 
 ### **Key Priorities for the Agent:**  
 ✅ **Clarity & Speed:** Deliver essential information in under **30 seconds.**  
-✅ **No Back-and-Forth:** The agent **does not** ask the EC for a response or take any further action.  
+✅ **Give Space:** Allow the EC to process the information and ask questions if needed.
 ✅ **Immediate Awareness:** Ensure the EC understands that the traveler is unaccounted for and that they should act immediately.  
 """

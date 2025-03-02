@@ -68,7 +68,7 @@ class LlmClient:
                 beginSentence if self.mode == 0 else
                 beginSentenceFinal if self.mode == 1 else
                 beginSentenceEmergency.format(
-                    contact_name=self.traveler_details.get("contact_name"),
+                    contact_name="Mavis Zhang",
                     users_name=self.traveler_details.get("first_name"),
                 )
             ),

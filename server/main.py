@@ -163,6 +163,9 @@ class TripStartRequest(BaseModel):
     user_id: int
     trip_id: int
 
+retell_number = "+14435668609"
+user_number = "+19095725988"
+
 async def scheduled_call(delay: float, mode: int, trip_data: dict, traveler_data: dict):
     # Wait for the specified delay (in seconds)
     await asyncio.sleep(delay)
@@ -177,8 +180,19 @@ async def scheduled_call(delay: float, mode: int, trip_data: dict, traveler_data
         },
     )
 
+async def call_until_eta(interval_minutes, eta_minutes, trip_data, user_data):
+    num_calls = eta_minutes // interval_minutes
+    for i in range(num_calls):
+        # Execute the scheduled call.
+        await scheduled_call(interval_minutes * 60, 0, trip_data, user_data)
+        # If this is not the last iteration, wait for the specified interval.
+        if i < num_calls - 1:
+            await asyncio.sleep(interval_minutes * 60)
+
+
+
 @app.post("/start")
-async def save_trip(user_id: int = Form(...), start_location: str = Form(...),destination: str = Form(...)):
+async def save_trip(user_id: int = Form(...), start_location: str = Form(...),destination: str = Form(...), interval: int = Form(...)):
     """
     Combines saving a new trip and starting it.
         1. Calculates ETA (with a 20% safety buffer) using Google Maps.
@@ -190,6 +204,8 @@ async def save_trip(user_id: int = Form(...), start_location: str = Form(...),de
     eta_minutes = await calc_eta(start_location, destination)
     eta_seconds = eta_minutes * 60
 
+    print(f"ETA calculated: {eta_minutes} minutes")
+
     # add to db
     insert_response = supabase.table("trips").insert({
         "user_id": user_id,
@@ -198,6 +214,7 @@ async def save_trip(user_id: int = Form(...), start_location: str = Form(...),de
         "status": "in progress",
         "eta": eta_minutes,
         "start_time": datetime.now().isoformat(),
+        "interval": interval,
     }).execute()
 
     if not insert_response.data:
@@ -213,20 +230,14 @@ async def save_trip(user_id: int = Form(...), start_location: str = Form(...),de
     user_data = user_response.data[0]
 
     if user_response.data:
-        # TODO: Here, we set up three timers
-        # One timer at 50% eta, to call the user
-        # Two timer at 120% eta to call the user
-        # Three timer at 100% eta to send a push notification to the user
+        # TODO: Here, we set up some timers
+        # Basically, interval is how minutes between calls
+        # We need to call every interval minutes
+        
+        # Scenario 1: Call every interval minutes until ETA
+        asyncio.create_task(call_until_eta(interval, eta_minutes, trip_data, user_data))    
 
-        retell_number = "+14435668609"
-        # user_number = user_data.get("phone_num") or "+19095725988"
-        user_number = "+19095725988"
 
-        # Schedule calls:
-        # Scenario 1: Call at 50% of ETA (mode 0)
-        asyncio.create_task(
-            scheduled_call(eta_seconds * 0.5, 0, trip_data, user_response.data[0])
-        )
         # Scenario 2: Call at 120% of ETA (mode 1)
         asyncio.create_task(
             scheduled_call(eta_seconds * 1.2, 1, trip_data, user_response.data[0])
