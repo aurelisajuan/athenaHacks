@@ -1,10 +1,12 @@
+// page.tsx (or TripInfo.tsx)
 "include client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MessageCircle, Footprints, MapPin, Bell, Users } from "lucide-react";
 import Head from "next/head";
+import { TripDetails } from "@/components/ui/tripDetails";
+import { SafeTravel } from "@/components/ui/safeTravel";
 
-//to be changed
 // Types for our data
 interface EmergencyContact {
   id: string;
@@ -12,7 +14,7 @@ interface EmergencyContact {
   avatar: string;
 }
 
-interface TripDetails {
+interface TripData {
   destination: {
     name: string;
     address: string;
@@ -24,7 +26,7 @@ interface TripDetails {
 }
 
 // Dummy data that would come from the backend
-const tripData: TripDetails = {
+const tripData: TripData = {
   destination: {
     name: "Century City",
     address: "10250 Santa Monica Blvd. 90067 Los Angeles CA",
@@ -60,11 +62,15 @@ const ContactItem = ({ contact }: { contact: EmergencyContact }) => {
 
 export default function TripInfo() {
   const notifyContact = (contactId: string) => {
-    console.log("Notifying contact with ID: ${contactId}");
+    console.log(`Notifying contact with ID: ${contactId}`);
   };
 
   return (
     <div className="flex flex-col h-screen bg-gray-100">
+      <Head>
+        <title>Your Trip</title>
+      </Head>
+
       <div className="flex px-6 pt-6 overflow-auto">
         <div className="flex justify-between items-center mb-4 pt-4 w-full">
           <div className="flex items-center space-x-3">
@@ -80,33 +86,12 @@ export default function TripInfo() {
         </div>
       </div>
 
-      {/* Trip Details */}
-      <section className="px-5 pb-5">
-        <div className="mb-4">
-          <p className="text-gray-500 uppercase text-sm font-bold mb-1">
-            DESTINATION
-          </p>
-          <h2 className="text-3xl font-bold">{tripData.destination.name}</h2>
-          <p className="text-gray-500 text-sm">
-            {tripData.destination.address}
-          </p>
-        </div>
-
-        <div className="flex justify-between mb-2">
-          <div>
-            <p className="text-gray-500 uppercase text-sm font-bold">
-              ESTIMATED ARRIVAL
-            </p>
-            <h3 className="text-3xl font-bold">{tripData.estimatedArrival}</h3>
-          </div>
-          <div>
-            <p className="text-gray-500 uppercase text-sm font-bold">
-              TRAVEL TIME
-            </p>
-            <h3 className="text-3xl font-bold">{tripData.travelTime}</h3>
-          </div>
-        </div>
-      </section>
+      {/* Use the new TripDetails component */}
+      <TripDetails
+        destination={tripData.destination}
+        estimatedArrival={tripData.estimatedArrival}
+        travelTime={tripData.travelTime}
+      />
 
       {/* Emergency Contacts */}
       <section className="px-5 flex-1">
