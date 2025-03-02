@@ -1,5 +1,8 @@
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI, Form, HTTPException
+from fastapi import FastAPI, Form, HTTPException, Request
+import aiofiles
+from recognition import recognition
+from process_video import *
 
 app = FastAPI()
 
@@ -37,6 +40,26 @@ async def get_interval(time: int = Form(...)):
     if time <= 0:
         raise HTTPException(status_code=400, detail="Interval must be greater than 0")
     return {"received_message": time}
+
+
+@app.post("/check-in")
+async def check_in(request: Request):
+    try:
+        video_bytes = await request.body()  # Read the video bytes
+        path = "demos/serena_video.mp4"
+
+        async with aiofiles.open(path, "wb") as video_file:
+            await video_file.write(video_bytes)
+
+        voice_path = process_voice(path)
+        img_path = process_video(path)
+
+        result = recognition(voice_path, "demos/serena_demo.wav", img_path, "demos/serena_img3.png")
+
+        return {"matched": result}
+
+    except Exception as e:
+        return {"error": str(e)}
 
 
 if __name__ == "__main__":
