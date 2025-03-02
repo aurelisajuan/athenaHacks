@@ -20,10 +20,22 @@ def embed_voice(path):
     return embed
 
 
-def embed_face(image_path, model_name="VGG-Face"):
-    embedding = DeepFace.represent(img_path=image_path, model_name=model_name)[0]["embedding"]
-    return np.array(embedding)
+# def embed_face(image_path, model_name="VGG-Face"):
+#     embedding = DeepFace.represent(img_path=image_path, model_name=model_name)[0]["embedding"]
+#     return np.array(embedding)
 
+
+def embed_face(image_path, model_name="VGG-Face"):
+    """
+    Extract face embedding using DeepFace.
+    If no face is detected, return None.
+    """
+    try:
+        embedding = DeepFace.represent(img_path=image_path, model_name=model_name)[0]["embedding"]
+        return np.array(embedding)  # Ensure it's a NumPy array
+    except Exception as e:
+        print(f"Face detection failed: {e}")
+        return None  # Return None if no face is detected
 
 def process_voice(input_file, user_id):
     if not os.path.exists(input_file):
@@ -36,12 +48,6 @@ def process_voice(input_file, user_id):
     embed = embed_voice(output_file)
     safe_remove(output_file)
     return embed
-
-
-import cv2
-import os
-import numpy as np
-
 
 def process_image(input_file, user_id):
     if not os.path.exists(input_file):
@@ -62,14 +68,18 @@ def process_image(input_file, user_id):
 
     if success:
         # Rotate the frame 90 degrees to the right
-        frame_rotated = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+        for i in range(4):
+            frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+            output_file = f"user_data/{user_id}_face_{i}.png"
+            # Save rotated frame
+            cv2.imwrite(output_file, frame)
 
-        # Save rotated frame
-        cv2.imwrite(output_file, frame_rotated)
+            # Process face embedding
+            embed = embed_face(output_file)
+            if embed is not None:  # If face detected, stop
+                safe_remove(output_file)
+                break
 
-        # Process face embedding
-        embed = embed_face(output_file)
-        safe_remove(output_file)
         return embed
     else:
         safe_remove(output_file)
