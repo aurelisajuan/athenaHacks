@@ -82,7 +82,7 @@ export default function StartTrip() {
     return;
   }
 
-  const API_URL = "http://localhost:8000";
+  const API_URL = "http://https://95fd-207-151-52-106.ngrok-free.app";
 
   const tripData = new FormData();
   tripData.append("user_id", "21"); // Ensure userId is available

@@ -15,7 +15,7 @@ const SignUp = () => {
       return;
     }
 
-    const API_URL = "http://localhost:8000";
+    const API_URL = "http://https://95fd-207-151-52-106.ngrok-free.app";
 
     try {
       const response = await fetch(`${API_URL}/signup`, {
