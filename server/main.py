@@ -21,6 +21,8 @@ load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_API_KEY = os.getenv("SUPABASE_API_KEY")
 GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
+GOOGLE_MAPS_MATRIX_API = os.getenv("GOOGLE_MAPS_API_KEY")
+
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_API_KEY)
 
