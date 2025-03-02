@@ -15,22 +15,36 @@ import {
 } from "@vis.gl/react-google-maps";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-// Your Google Maps API key from globalThis or fallback to a string.
+// Google Maps API key
 const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
-// Types for our data
-type SavedLocation = {
-  id: string;
-  name: string;
-  distance: string;
-};
+// Default location (USC)
+const USC_LAT_LNG = { lat: 34.0224, lng: -118.2851 };
 
-// Main component integrating your UI and Google Maps autocomplete
+// Main component integrating UI and Google Maps autocomplete
 export default function StartTrip() {
   const [userName, setUserName] = useState("Lisa"); // Would come from user profile
   const [selectedPlace, setSelectedPlace] =
     useState<google.maps.places.PlaceResult | null>(null);
   const [markerRef, marker] = useAdvancedMarkerRef();
+  const [mapCenter, setMapCenter] = useState(USC_LAT_LNG); 
+
+  // Get user's current location
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setMapCenter({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
+        },
+        () => {
+          console.log("Geolocation permission denied. Defaulting to USC.");
+        }
+      );
+    }
+  }, []);
 
   return (
     <APIProvider
@@ -68,15 +82,15 @@ export default function StartTrip() {
             <div className="relative h-48 w-full bg-gray-200 rounded-lg overflow-hidden">
               <Map
                 mapId="bf51a910020fa25a"
-                defaultZoom={3}
-                defaultCenter={{ lat: 22.54992, lng: 0 }}
+                defaultZoom={15}
+                center={mapCenter}
                 gestureHandling="greedy"
                 disableDefaultUI={true}
               >
-                <AdvancedMarker ref={markerRef} position={null} />
+                <AdvancedMarker ref={markerRef} position={mapCenter} />
                 <MapControl position={ControlPosition.TOP}>
                   <div className="autocomplete-control">
-                    {/* You could optionally place another autocomplete here */}
+                    {/* Optional extra autocomplete */}
                   </div>
                 </MapControl>
                 <MapHandler place={selectedPlace} marker={marker} />
