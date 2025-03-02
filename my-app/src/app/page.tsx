@@ -154,7 +154,7 @@ export default function StartTrip() {
                   setSelectedInterval(Number(e.target.value))
                 }
               >
-                <option value={0}>Don't check-in</option>
+                <option value={0}>Don&apos;t check-in</option>
                 <option key={0.33} value={0.33}>
                   {0.33}
                 </option>

@@ -124,7 +124,6 @@ export default function VideoUpdate() {
   // };
 
   // const userId = localStorage.getItem("user_id");
-  const userId = 21;
 
   // Reset recording
   const handleReset = () => {

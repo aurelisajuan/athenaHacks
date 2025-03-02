@@ -26,7 +26,7 @@ const Nav: React.FC = () => {
         onClick={() => handleClick("trip")}
         className="flex flex-col items-center"
       >
-        <a href="/" className="text-xs flex flex-col items-center">
+        <Link href="/" className="text-xs flex flex-col items-center">
           <div className="w-8 h-8 flex items-center justify-center">
             <MapPin
               className={`h-6 w-6 ${
@@ -41,13 +41,13 @@ const Nav: React.FC = () => {
           >
             Start Trip
           </span>
-        </a>
+        </Link>
       </button>
       <button
         onClick={() => handleClick("alert")}
         className="flex flex-col items-center"
       >
-        <a href="/arrived" className="text-xs flex flex-col items-center">
+        <Link href="/arrived" className="text-xs flex flex-col items-center">
           <div className="w-8 h-8 flex items-center justify-center">
             <Bell
               className={`h-6 w-6 ${
@@ -62,7 +62,7 @@ const Nav: React.FC = () => {
           >
             Trip Status
           </span>
-        </a>
+        </Link>
       </button>
       <button
         onClick={() => handleClick("contact")}
