@@ -1,15 +1,11 @@
-// page.tsx (or TripInfo.tsx)
 "use client";
 
 import React, { useState } from "react";
+import Head from "next/head";
 import NavTask from "@/components/ui/nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MessageCircle, Footprints } from "lucide-react";
-import Head from "next/head";
-import { TripDetails } from "@/components/ui/tripDetails";
-import { SafeTravel } from "@/components/ui/safeTravel";
 
-// Types for our data
 interface EmergencyContact {
   id: string;
   name: string;
@@ -27,7 +23,7 @@ interface TripData {
   emergencyContacts: EmergencyContact[];
 }
 
-// Dummy data that would come from the backend
+// Dummy data from backend
 const tripData: TripData = {
   destination: {
     name: "Century City",
@@ -50,7 +46,7 @@ interface ContactItemProps {
   toggleContact: (contactId: string) => void;
 }
 
-// Contact Item Component
+// Contact Item Component with the styling from your second code
 const ContactItem = ({
   contact,
   isSelected,
@@ -59,7 +55,7 @@ const ContactItem = ({
   return (
     <div
       onClick={() => toggleContact(contact.id)}
-      className={`cursor-pointer flex items-center justify-between rounded-full p-7 shadow-sm mb-3 transition-colors ${
+      className={`cursor-pointer flex items-center justify-between rounded-full p-8 shadow-sm mb-3 transition-colors ${
         isSelected ? "bg-pink-500 text-white" : "bg-white text-gray-800"
       }`}
     >
@@ -70,7 +66,11 @@ const ContactItem = ({
         </Avatar>
         <span className="font-medium">{contact.name}</span>
       </div>
-      <button className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-blue-500">
+      <button
+        className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
+          isSelected ? "bg-pink-300 text-white" : "bg-gray-100 text-gray-500"
+        }`}
+      >
         <MessageCircle size={20} />
       </button>
     </div>
@@ -78,7 +78,11 @@ const ContactItem = ({
 };
 
 export default function TripInfo() {
+  // Track selected emergency contacts (up to two)
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
+  // View can be "tripDetails" (select contacts) or "safeTravel" (notification view)
+  const [view, setView] = useState<"tripDetails" | "safeTravel">("tripDetails");
+
   const toggleContact = (contactId: string) => {
     setSelectedContacts((prev) => {
       if (prev.includes(contactId)) {
@@ -91,17 +95,19 @@ export default function TripInfo() {
     });
   };
 
+  // Build a display string of the selected contacts' names
   const selectedNames = tripData.emergencyContacts
     .filter((c) => selectedContacts.includes(c.id))
     .map((c) => c.name)
     .join(" and ");
 
   return (
-    <div className="flex flex-col h-screen bg-gray-100">
+    <div className="flex flex-col h-screen bg-gray-100 relative overflow-hidden">
       <Head>
         <title>Your Trip</title>
       </Head>
 
+      {/* Top Navigation Bar */}
       <div className="flex px-6 pt-6 overflow-auto">
         <div className="flex justify-between items-center mb-4 pt-4 w-full">
           <div className="flex items-center space-x-3">
@@ -117,44 +123,109 @@ export default function TripInfo() {
         </div>
       </div>
 
-      <div className="px-6 mb-4">
-        <h2 className="text-lg font-bold mb-1">Safe Travel</h2>
-        {selectedNames ? (
-          <p className="text-sm text-gray-700">
-            Call <strong>{selectedNames}</strong> at{" "}
-            <strong>{tripData.estimatedArrival}</strong> if there is an
-            emergency
-          </p>
-        ) : (
-          <p className="text-sm text-gray-700">
-            Select up to two emergency contacts below
-          </p>
-        )}
+      {/* Slider Container */}
+      <div className="relative flex-1">
+        {/* Trip Details (Contact Selection) Slide */}
+        <div
+          className={`absolute top-0 w-full h-full transition-transform duration-300 ${
+            view === "tripDetails" ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          <div className="px-6 mb-4">
+            <h2 className="text-lg font-bold mb-1">Safe Travel</h2>
+            {selectedNames ? (
+              <p className="text-sm text-gray-700">
+                Call <strong>{selectedNames}</strong> at{" "}
+                <strong>{tripData.estimatedArrival}</strong> if there is an
+                emergency.
+              </p>
+            ) : (
+              <p className="text-sm text-gray-700">
+                Select up to two emergency contacts below
+              </p>
+            )}
+          </div>
+
+          <section className="px-5">
+            <p className="text-gray-500 uppercase text-sm font-bold mb-4">
+              Notify Emergency Contacts
+            </p>
+            <div>
+              {tripData.emergencyContacts.map((contact) => (
+                <ContactItem
+                  key={contact.id}
+                  contact={contact}
+                  isSelected={selectedContacts.includes(contact.id)}
+                  toggleContact={toggleContact}
+                />
+              ))}
+            </div>
+          </section>
+
+          <div className="flex justify-center px-6 py-4">
+            <button
+              onClick={() => setView("safeTravel")}
+              disabled={selectedContacts.length === 0}
+              className={`flex items-center justify-center px-4 py-2 rounded-md font-semibold ${
+                selectedContacts.length === 0
+                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  : "bg-pink-500 text-white"
+              }`}
+            >
+              Continue
+            </button>
+          </div>
+        </div>
+
+        {/* Safe Travel Slide */}
+        <div
+          className={`absolute top-0 w-full h-full transition-transform duration-300 ${
+            view === "safeTravel" ? "translate-x-0" : "translate-x-full"
+          }`}
+        >
+          <div className="px-6 mb-4">
+            <h2 className="text-lg font-bold mb-1">Safe Travel</h2>
+            {selectedNames ? (
+              <p className="text-sm text-gray-700">
+                Call <strong>{selectedNames}</strong> at{" "}
+                <strong>{tripData.estimatedArrival}</strong> if there is an
+                emergency.
+              </p>
+            ) : (
+              <p className="text-sm text-gray-700">No contacts selected.</p>
+            )}
+          </div>
+
+          <section className="px-5">
+            <p className="text-gray-500 uppercase text-sm font-bold mb-4">
+              Your Selected Contacts
+            </p>
+            <div>
+              {tripData.emergencyContacts
+                .filter((c) => selectedContacts.includes(c.id))
+                .map((contact) => (
+                  <ContactItem
+                    key={contact.id}
+                    contact={contact}
+                    isSelected={true}
+                    toggleContact={toggleContact}
+                  />
+                ))}
+            </div>
+          </section>
+
+          <div className="flex justify-center px-6 py-4">
+            <button
+              onClick={() => setView("tripDetails")}
+              className="px-4 py-2 rounded-md font-semibold bg-gray-200 text-gray-700"
+            >
+              Back
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Emergency Contacts */}
-      <section className="px-5 flex-1">
-        <p className="text-gray-500 uppercase text-sm font-bold mb-4">
-          Notify Emergency Contacts
-        </p>
-        <div>
-          {tripData.emergencyContacts.map((contact) => (
-            <ContactItem
-              key={contact.id}
-              contact={contact}
-              isSelected={selectedContacts.includes(contact.id)}
-              toggleContact={toggleContact}
-            />
-          ))}
-        </div>
-      </section>
-
-      {/* <TripDetails
-        destination={tripData.destination}
-        estimatedArrival={tripData.estimatedArrival}
-        travelTime={tripData.travelTime}
-      /> */}
-
+      {/* Bottom Navigation */}
       <NavTask />
     </div>
   );
