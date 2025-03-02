@@ -2,7 +2,6 @@
 
 import NavTask from "@/components/ui/nav";
 import React, { useState, useEffect, useRef } from "react";
-import { MapPin, Bell, Users } from "lucide-react";
 import {
   APIProvider,
   ControlPosition,
@@ -27,7 +26,7 @@ export default function StartTrip() {
   const [selectedPlace, setSelectedPlace] =
     useState<google.maps.places.PlaceResult | null>(null);
   const [markerRef, marker] = useAdvancedMarkerRef();
-  const [mapCenter, setMapCenter] = useState(USC_LAT_LNG); 
+  const [mapCenter, setMapCenter] = useState(USC_LAT_LNG);
 
   // Get user's current location
   useEffect(() => {
