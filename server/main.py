@@ -2,6 +2,7 @@ import os
 import math
 import requests
 import asyncio
+import uvicorn
 from functools import partial
 from fastapi import FastAPI, HTTPException, Form, Request
 from pydantic import BaseModel
@@ -142,6 +143,5 @@ async def calculate_eta_endpoint(request: ETARequest):
 
 
 if __name__ == "__main__":
-    import uvicorn
 
     uvicorn.run(app, host="127.0.0.1", port=8000, reload=True)
