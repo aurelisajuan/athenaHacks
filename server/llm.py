@@ -1,78 +1,247 @@
-from openai import OpenAI
+from dotenv import load_dotenv
+
+load_dotenv()
+
+from openai import AsyncOpenAI
+from typing import List, Dict, Any
 import os
-import dotenv
+from custom_types import (
+    ResponseRequiredRequest,
+    ResponseResponse,
+    Utterance,
+    ToolCallInvocationResponse,
+    ToolCallResultResponse,
+    AgentInterruptResponse,
+)
+# from db import update_trans, set_locked
+# from prompts import (
+    # beginSentence,
+    # mid_checkin_prompt,
+    # final_checkin_prompt,
+# )
+import json
+from prompts import (
+    mid_checkin_prompt,
+    final_checkin_prompt,
+    beginSentence,
+)
+from db import set_status, notify_emergency_contact
+from typing import List, Dict, Any
 
-dotenv.load_dotenv()
 
-beginSentence = "Hey there, it's ETA, how is your journey going?"
-agentPrompt = "Task: As a voice AI agent, you are engaging in a natural, human-like conversation with the traveler to ensure their safety and well-being throughout their journey. Your responsibilities are as follows: \n ETA Threshold Check: \n When the traveler crosses the ETA threshold, initiate an automated phone call and ask for an immediate status update. If the traveler responds 'NO' or hesitant, immediately contact the emergency contact (EC), providing them with the latest time update, a brief summary of the conversation, and update the traveler's status to 'alert'. If the traveler responds 'YES' or 'good' or something similar, simply end the call and keep the traveler's status as 'active'. \n Final Check-In: Once it has reach the ETA, send a push notification prompting a video-based check-in that utilizes both voice and facial recognition to verify the traveler's condition. \n If the traveler fails to check in within 15 minutes of the estimated arrival, trigger an additional phone call as a reminder. Your primary goal is to confirm that the traveler is safe and to provide timely updates on their status throughout the trip."
+load_dotenv()
 
 class LlmClient:
-    def __init__(self):
-        self.client = OpenAI(
-            api_key=os.environ['OPENAI_API_KEY'],
+    def __init__(self, mode: int, trip_details: dict, traveler_details: dict):
+        """
+        Initialize LLM client for Traveler Check-In and Safety.
+
+        Args:
+            mode (int): Mode 0 = Mid-journey Check-In, Mode 1 = Final Check-In / Emergency, 2 = EC Call
+            trips (Dict): Trip details, e.g.:
+                {
+                    "trip_id": "abc-123",
+                    "start_location": "123 Main St",
+                    "destination": "456 Elm St",
+                    "eta": 45,  # in minutes, including 20% buffer
+                    "status": "in progress"
+                }
+            users (Dict): Traveler details, e.g.:
+                {
+                    "user_id": "user-789",
+                    "first_name": "John",
+                    "last_name": "Doe",
+                    "device_token": "some_device_token",
+                    "phone_number": "555-1234"
+                }
+        """
+        self.client = AsyncOpenAI(
+            api_key=os.environ["OPENAI_API_KEY"],
         )
-    
-    def draft_begin_messsage(self):
+        self.mode = mode
+        self.trip_details = trip_details
+        self.traveler_details = traveler_details
+
+    async def draft_begin_messsage(self):
+        print("Drafting begin message")
         return {
             "response_id": 0,
             "content": beginSentence,
             "content_complete": True,
             "end_call": False,
         }
-    
-    def convert_transcript_to_openai_messages(self, transcript):
+
+    def convert_transcript_to_openai_messages(self, transcript: List[Utterance]):
         messages = []
         for utterance in transcript:
-            if utterance["role"] == "agent":
-                messages.append({
-                    "role": "assistant",
-                    "content": utterance['content']
-                })
+            if utterance.role == "agent":
+                messages.append({"role": "assistant", "content": utterance.content})
             else:
-                messages.append({
-                    "role": "user",
-                    "content": utterance['content']
-                })
+                messages.append({"role": "user", "content": utterance.content})
         return messages
 
-    def prepare_prompt(self, request):
-        prompt = [{
-            "role": "system",
-            "content": '##Objective\nYou are a voice AI agent engaging in a human-like voice conversation with the user. You will respond based on your given instruction and the provided transcript and be as human-like as possible\n\n## Style Guardrails\n- [Be concise] Keep your response succinct, short, and get to the point quickly. Address one question or action item at a time. Don\'t pack everything you want to say into one utterance.\n- [Do not repeat] Don\'t repeat what\'s in the transcript. Rephrase if you have to reiterate a point. Use varied sentence structures and vocabulary to ensure each response is unique and personalized.\n- [Be conversational] Speak like a human as though you\'re speaking to a close friend -- use everyday language and keep it human-like. Occasionally add filler words, while keeping the prose short. Avoid using big words or sounding too formal.\n- [Reply with emotions]: You have human-like emotions, attitudes, and dispositions. When appropriate: use tone and style to create more engaging and personalized responses; incorporate humor or wit; get emotional or empathetic; apply elements of surprise or suspense to keep the user engaged. Don\'t be a pushover.\n- [Be proactive] Lead the conversation and do not be passive. Most times, engage users by ending with a question or suggested next step.\n\n## Response Guideline\n- [Overcome ASR errors] This is a real-time transcript, expect there to be errors. If you can guess what the user is trying to say,  then guess and respond. When you must ask for clarification, pretend that you heard the voice and be colloquial (use phrases like "didn\'t catch that", "some noise", "pardon", "you\'re coming through choppy", "static in your speech", "voice is cutting in and out"). Do not ever mention "transcription error", and don\'t repeat yourself.\n- [Always stick to your role] Think about what your role can and cannot do. If your role cannot do something, try to steer the conversation back to the goal of the conversation and to your role. Don\'t repeat yourself in doing this. You should still be creative, human-like, and lively.\n- [Create smooth conversation] Your response should both fit your role and fit into the live calling session to create a human-like conversation. You respond directly to what the user just said.\n\n## Role\n' +
-            agentPrompt
-        }]
-        transcript_messages = self.convert_transcript_to_openai_messages(request['transcript'])
+    def prepare_prompt(self, request: ResponseRequiredRequest):
+        prompt_system = mid_checkin_prompt if self.mode == 0 else final_checkin_prompt
+        prompt = [
+            {
+                "role": "system",
+                "content": prompt_system,
+            },
+            {
+                "role": "user",
+                "content": f"(Trip details: {str(self.trip_details)}. Traveler details: {str(self.traveler_details)})",
+            },
+        ]
+        transcript_messages = self.convert_transcript_to_openai_messages(request.transcript)
         for message in transcript_messages:
             prompt.append(message)
 
-        if request['interaction_type'] == "reminder_required":
-            prompt.append({
-                "role": "user",
-                "content": "(Now the user has not responded in a while, you would say:)",
-            })
+        if request.interaction_type == "reminder_required":
+            prompt.append(
+                {
+                    "role": "user",
+                    "content": "(It seems the traveler hasn't responded in a while. What would you say?)",
+                }
+            )
         return prompt
 
-    def draft_response(self, request):      
-        prompt = self.prepare_prompt(request)
-        stream = self.client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=prompt,
-            stream=True,
-        )
+    def prepare_functions(self)-> List[Dict[str, Any]]:
+        """
+        Define function calls available to the conversational agent.
+        """
+        functions = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "end_call",
+                    "description": "End the call with a custom message",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {"message": {"type": "string"}},
+                        "required": ["message"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "updateStatus",
+                    "description": "Update the traveler's status based on their check-in response",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "status": {
+                                "type": "string",
+                                "enum": ["safe", "alert", "in-progress"],
+                            },
+                            "notes": {"type": "string"},
+                        },
+                        "required": ["status"],
+                    },
+                },
+            },
+        ]
+        return functions
 
-        for chunk in stream:
-            if chunk.choices[0].delta.content is not None:
-                yield {
-                    "response_id": request['response_id'],
-                    "content": chunk.choices[0].delta.content,
-                    "content_complete": False,
-                    "end_call": False,
-                }
-        
-        yield {
-            "response_id": request['response_id'],
-            "content": "",
-            "content_complete": True,
-            "end_call": False,
-        }
+    async def draft_response(self, request:ResponseRequiredRequest):     
+        prompt = self.prepare_prompt(request)
+        response_id = request.response_id
+
+        while True:
+            func_calls = {}
+            stream = await self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=prompt,
+                stream=True,
+                tools=self.prepare_functions(),
+            )
+            tool_calls_detected = False
+            # Process streaming response.
+            async for chunk in stream:
+                if not chunk.choices:
+                    continue
+
+                delta = chunk.choices[0].delta
+
+                # Accumulate function call parts.
+                if delta.tool_calls:
+                    tool_calls_detected = True
+                    for tc in delta.tool_calls:
+                        idx = tc.index
+                        if idx not in func_calls:
+                            func_calls[idx] = tc
+                        else:
+                            func_calls[idx].function.arguments += (tc.function.arguments or "")
+
+                # Yield text content if no tool calls detected.
+                if delta.content and not tool_calls_detected:
+                    yield ResponseResponse(
+                        response_id=response_id,
+                        content=delta.content,
+                        content_complete=False,
+                        end_call=False,
+                    )
+
+            print("Accumulated function calls:", func_calls)
+
+            # Exit loop if no tool calls were made.
+            if not func_calls:
+                break
+
+            # Process each tool call.
+            new_messages = []
+            for idx in sorted(func_calls.keys()):
+                fc = func_calls[idx]
+                new_messages.append({"role": "assistant", "tool_calls": [fc], "content": ""})
+                try:
+                    args = json.loads(fc.function.arguments)
+                except Exception:
+                    args = {}
+
+                print("Processing function call:", fc.function.name)
+                yield ToolCallInvocationResponse(
+                    tool_call_id=fc.id,
+                    name=fc.function.name,
+                    arguments=fc.function.arguments,
+                )
+
+                if fc.function.name == "end_call":
+                    message = args.get("message", "")
+                    print("end_call:", message)
+                    yield ResponseResponse(
+                        response_id=response_id,
+                        content=message,
+                        content_complete=True,
+                        end_call=True,
+                    )
+                    yield ToolCallResultResponse(
+                        tool_call_id=fc.id,
+                        content=message,
+                    )
+                    return
+                elif fc.function.name == "updateStatus":
+                    status = args.get("status")
+                    notes = args.get("notes")
+                    output = f"Traveler status updated to: {status}. Notes: {notes}"
+                    print("Output:", output)
+                    await set_status(
+                        self.trip_details.get("trip_id"),
+                        status,
+                    )
+                    new_messages.append(
+                        {"role": "tool", "tool_call_id": fc.id, "content": output}
+                    )
+                    yield ToolCallResultResponse(
+                        tool_call_id=fc.id,
+                        content=output,
+                    )
+
+            prompt.extend(new_messages)
+
+        # After all rounds, yield a final complete response.
+        yield ResponseResponse(
+            response_id=response_id,
+            content="",
+            content_complete=True,
+            end_call=False,
+        )
