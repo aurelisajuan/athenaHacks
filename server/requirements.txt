@@ -11,3 +11,4 @@ supabase==2.13.0
 uvicorn==0.34.0
 googlemaps==4.10.0
 opencv-python~=4.11.0.86
+resemblyzer==0.1.4
