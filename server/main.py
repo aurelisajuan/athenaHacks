@@ -10,6 +10,7 @@ import json
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Form, Request, UploadFile, File, WebSocket, WebSocketDisconnect
+from typing import Optional
 from concurrent.futures import TimeoutError as ConnectionTimeoutError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr
@@ -26,6 +27,7 @@ from custom_types import (
 from retell import Retell
 from llm import LlmClient
 
+from db import set_status, notify_emergency_contact
 
 app = FastAPI()
 
@@ -430,6 +432,69 @@ async def calculate_eta_endpoint(request: ETARequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+class StatusUpdateRequest(BaseModel):
+    trip_id: str
+    status: str  # e.g., "safe", "alert", "completed"
+    notes: Optional[str] = None
+
+class NotifyECRequest(BaseModel):
+    traveler_id: int
+    trip_id: int
+    contact_name: str
+    phone_number: str
+
+@app.post("/api/status/update")
+async def update_status(request: StatusUpdateRequest):
+    """
+    API Route: /api/status/update (POST)
+    Inputs: Request body with trip ID, status update, and optional notes
+    Outputs: JSON response confirming status update
+    """
+    result = await set_status(request.trip_id, request.status)
+    if result.get("status") == "error":
+        raise HTTPException(status_code=400, detail=result.get("message"))
+    return result
+
+@app.post("/api/status/update")
+async def update_status(request: StatusUpdateRequest):
+    """
+    API Route: /api/status/update (POST)
+    Inputs: Request body with trip ID, status update, and optional notes
+    Outputs: JSON response confirming status update
+    """
+    result = await set_status(request.trip_id, request.status)
+    if result.get("status") == "error":
+        raise HTTPException(status_code=400, detail=result.get("message"))
+    return result
+
+@app.post("/api/notify/ec")
+async def notify_ec(request: NotifyECRequest):
+    """
+    API Route: /api/notify/ec (POST)
+    Inputs: Request body with traveler’s ID, trip ID, and emergency contact details
+    Outputs: JSON response indicating that the emergency contact has been notified
+    """
+    result = await notify_emergency_contact(
+        user_id=request.traveler_id,
+        trip_id=request.trip_id,
+        contact_name=request.contact_name,
+        phone_number=request.phone_number
+    )
+    return result
+
+@app.get("/api/alerts")
+async def get_alerts(user_id: str, trip_id: str, status: str):
+    """
+    API Route: /api/alerts (GET)
+    Inputs: Query parameters (user_id, trip_id)
+    Outputs: JSON object containing alert history and current status
+    """
+    response = supabase.table("trips").select("*").eq("user_id", user_id).eq("trip_id", trip_id).eq("statue", status).execute()
+
+    if not response.data:
+        raise HTTPException(status_code=404, detail="No alerts found for the given user and trip ID")
+
+    return {"user_id": user_id, "trip_id": trip_id, "status": status}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000, reload=True)

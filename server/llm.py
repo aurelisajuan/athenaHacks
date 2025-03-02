@@ -224,7 +224,6 @@ class LlmClient:
                     notes = args.get("notes")
                     output = f"Traveler status updated to: {status}. Notes: {notes}"
                     print("Output:", output)
-                    # Update the trip status (e.g., call to Supabase DB or API).
                     await set_status(
                         self.trip_details.get("trip_id"),
                         status,
