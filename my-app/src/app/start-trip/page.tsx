@@ -96,7 +96,7 @@ export default function StartTrip() {
   const API_URL = "http://localhost:8000";
 
   const tripData = new FormData();
-  tripData.append("user_id", userId || "20"); // Ensure userId is available
+  tripData.append("user_id", "21"); // Ensure userId is available
   tripData.append("start_location", startLocation);
   tripData.append("destination", destination);
 
