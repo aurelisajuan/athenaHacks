@@ -20,6 +20,11 @@ import aiofiles
 from recognition import recognition
 from process_video import *
 
+import traceback
+from datetime import datetime
+
+import inspect
+
 from custom_types import (
     ConfigResponse,
     ResponseRequiredRequest,
@@ -27,7 +32,7 @@ from custom_types import (
 from retell import Retell
 from llm import LlmClient
 
-from db import set_status, notify_emergency_contact
+from db import set_status
 
 app = FastAPI()
 
@@ -189,7 +194,8 @@ async def save_trip(user_id: int = Form(...), start_location: str = Form(...),de
         "start_location": start_location,
         "destination": destination,
         "status": "in progress",
-        "eta": eta_minutes
+        "eta": eta_minutes,
+        "start_time": datetime.now().isoformat(),
     }).execute()
 
     if not insert_response.data:
@@ -211,8 +217,8 @@ async def save_trip(user_id: int = Form(...), start_location: str = Form(...),de
         # Three timer at 100% eta to send a push notification to the user
 
         retell_number = "+14435668609"
-        user_number = "+19095725983" 
-        # user_number = user_data.get("phone_num") or "+19095725983"
+        # user_number = user_data.get("phone_num") or "+19095725988"
+        user_number = "+19095725988"
 
         # Schedule calls:
         # Scenario 1: Call at 50% of ETA (mode 0)
@@ -455,21 +461,6 @@ async def update_status(request: StatusUpdateRequest):
         raise HTTPException(status_code=400, detail=result.get("message"))
     return result
 
-@app.post("/api/notify/ec")
-async def notify_ec(request: NotifyECRequest):
-    """
-    API Route: /api/notify/ec (POST)
-    Inputs: Request body with traveler’s ID, trip ID, and emergency contact details
-    Outputs: JSON response indicating that the emergency contact has been notified
-    """
-    result = await notify_emergency_contact(
-        user_id=request.traveler_id,
-        trip_id=request.trip_id,
-        contact_name=request.contact_name,
-        phone_number=request.phone_number
-    )
-    return result
-
 @app.get("/api/alerts")
 async def get_alerts(user_id: str, trip_id: str, status: str):
     """
@@ -484,5 +475,67 @@ async def get_alerts(user_id: str, trip_id: str, status: str):
 
     return {"user_id": user_id, "trip_id": trip_id, "status": status}
 
+
+@app.post("/webhook")
+async def handle_webhook(request: Request):
+    try:
+        post_data = await request.json()
+        print(f"[Line {inspect.currentframe().f_lineno}] Received webhook data:", post_data)
+
+        event = post_data.get("event")
+        call_data = post_data.get("call", {})
+        call_id = call_data.get("call_id", "unknown")
+        
+        if event == "call_started":
+            print(f"[Line {inspect.currentframe().f_lineno}] Call started event for ID:", call_id)
+        elif event == "call_ended":
+            print(f"[Line {inspect.currentframe().f_lineno}] Call ended event for ID:", call_id)
+
+            # Check if the call was unsuccessful
+            call_successful = post_data.get("call", {}).get("disconnection_reason", "")
+            if call_successful == "voicemail_reached":
+                metadata = post_data.get("call", {}).get("metadata", {})
+                trip_details = metadata.get("trip_details", {})
+                traveler_details = metadata.get("traveler_details", {})
+
+                # Notify the emergency contact
+                retell_number = "+14435668609"
+                user_number = "+19095725988"
+                metadata = post_data.get("call", {}).get("metadata", {})
+                emergency_contact = metadata.get("emergency_contact", {})
+                user_number = emergency_contact.get("phone_number") or "+15615709730"
+
+                try:
+                    # emergency 
+                    mode = 2
+                    retell.call.create_phone_call(
+                            from_number=retell_number,
+                            to_number=user_number,
+                            metadata={
+                                "mode": mode,
+                                "trip_details": trip_details,
+                                "traveler_details": traveler_details,
+                            },
+                        )
+                    print(f"[Line {inspect.currentframe().f_lineno}] Emergency contact notified successfully")
+                except Exception as e:
+                    print(f"[Line {inspect.currentframe().f_lineno}] Error notifying emergency contact:", str(e))
+                    raise
+
+        elif event == "call_analyzed":
+            print(f"[Line {inspect.currentframe().f_lineno}] Call analyzed event for ID:", call_id)
+            
+        else:
+            print(f"[Line {inspect.currentframe().f_lineno}] Unknown event type:", event)
+            
+        return JSONResponse(status_code=200, content={"message": "Webhook received successfully"})
+    except Exception as err:
+        print(f"[Line {inspect.currentframe().f_lineno}] Error in webhook: {str(err)}")
+        print("Traceback:", traceback.format_exc())
+        
+        return JSONResponse(
+            status_code=500, content={"message": f"Internal Server Error: {str(err)}"}
+        )
+    
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000, reload=True)
