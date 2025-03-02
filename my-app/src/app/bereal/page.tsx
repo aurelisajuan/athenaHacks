@@ -149,7 +149,7 @@ export default function VideoUpdate({ onVerify }: VideoUpdateProps) {
     const videoFile = new File([videoBlob], "checkin_video.mp4", { type: "video/mp4" });
 
     const formData = new FormData();
-    formData.append("user_id", userId); // Replace with the actual user ID
+    formData.append("user_id", "21");
     formData.append("file", videoFile);
 
     // Use environment variable for backend URL

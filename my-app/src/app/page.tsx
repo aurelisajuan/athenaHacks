@@ -194,7 +194,9 @@ export default function StartTrip() {
                 }
               >
                 <option value={0}>Don't check-in</option>
-                
+                  <option key={.33} value={.33}>
+                      {.33}
+                  </option>
                   <option key={1} value={1}>
                     {1}
                   </option>
