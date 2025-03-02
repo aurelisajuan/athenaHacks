@@ -3,8 +3,10 @@ import math
 import requests
 import asyncio
 from functools import partial
+
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Form, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from supabase import create_client, Client
 from fastapi.middleware.cors import CORSMiddleware
 import aiofiles
@@ -13,9 +15,10 @@ from process_video import *
 
 app = FastAPI()
 
+load_dotenv()
+
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_API_KEY = os.getenv("SUPABASE_API_KEY")
-GOOGLE_MAPS_MATRIX_API = os.getenv("GOOGLE_MAPS_MATRIX_API")
 GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_API_KEY)
@@ -28,6 +31,68 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+class SignUpRequest(BaseModel):
+    first_name: str
+    last_name: str
+    phone_num: str
+
+
+@app.post("/signup")
+async def signup(user: SignUpRequest):
+    try:
+        response = supabase.table("users").insert({
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "phone_num": user.phone_num,
+        }).execute()
+
+        user_data = response.data[0]
+        user_id = user_data["id"]
+
+        return {
+            "id": user_id,
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class LoginRequest(BaseModel):
+    first_name: str
+    last_name: str
+    phone_num: str
+
+
+@app.post("/login")
+async def login(user: LoginRequest):
+    try:
+        # Query the Supabase database for a matching user
+        response = supabase.table("users") \
+            .select("*") \
+            .eq("first_name", user.first_name) \
+            .eq("last_name", user.last_name) \
+            .eq("phone_num", user.phone_num) \
+            .execute()
+
+        if not response.data:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+
+        user_data = response.data[0]  # Get the matched user
+
+        return {
+            "message": "Login successful",
+            "user": {
+                "id": user_data["id"],
+                "first_name": user_data["first_name"],
+                "last_name": user_data["last_name"],
+                "phone_num": user_data["phone_num"]
+            }
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/get-ref-video")
@@ -78,8 +143,8 @@ async def check_in(request: Request):
         async with aiofiles.open(path, "wb") as video_file:
             await video_file.write(video_bytes)
 
-        voice_path = process_voice(path)
-        img_path = process_image(path)
+        voice_path = process_voice(path, 1)
+        img_path = process_image(path, 1)
 
         result = recognition(voice_path, "demos/serena_demo.wav", img_path, "demos/serena_img3.png")
 
