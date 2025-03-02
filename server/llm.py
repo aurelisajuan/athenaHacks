@@ -13,20 +13,16 @@ from custom_types import (
     ToolCallResultResponse,
     AgentInterruptResponse,
 )
-# from db import update_trans, set_locked
-# from prompts import (
-    # beginSentence,
-    # mid_checkin_prompt,
-    # final_checkin_prompt,
-# )
 import json
 from prompts import (
     mid_checkin_prompt,
     final_checkin_prompt,
     beginSentence,
     beginSentenceFinal,
+    beginSentenceEmergency,
+    emergency_call_prompt,
 )
-from db import set_status, notify_emergency_contact
+from db import set_status
 from typing import List, Dict, Any
 
 
@@ -67,7 +63,14 @@ class LlmClient:
         print("Drafting begin message")
         return {
             "response_id": 0,
-            "content": beginSentence if self.mode == 0 else beginSentenceFinal,
+            "content": (
+                beginSentence if self.mode == 0 else
+                beginSentenceFinal if self.mode == 1 else
+                beginSentenceEmergency.format(
+                    contact_name=self.traveler_details.get("contact_name"),
+                    users_name=self.traveler_details.get("first_name"),
+                )
+            ),
             "content_complete": True,
             "end_call": False,
         }
@@ -82,7 +85,12 @@ class LlmClient:
         return messages
 
     def prepare_prompt(self, request: ResponseRequiredRequest):
-        prompt_system = mid_checkin_prompt if self.mode == 0 else final_checkin_prompt
+        if self.mode == 0:
+            prompt_system = mid_checkin_prompt
+        elif self.mode == 1:
+            prompt_system = final_checkin_prompt
+        elif self.mode == 2:
+            prompt_system = emergency_call_prompt
         prompt = [
             {
                 "role": "system",
@@ -182,13 +190,16 @@ class LlmClient:
                         content_complete=False,
                         end_call=False,
                     )
-
+            
+            print("Phone not answered")
             print("Accumulated function calls:", func_calls)
 
             # Exit loop if no tool calls were made.
             if not func_calls:
                 break
-
+            
+            print("Phone not answered")
+            
             # Process each tool call.
             new_messages = []
             for idx in sorted(func_calls.keys()):

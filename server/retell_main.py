@@ -52,3 +52,23 @@ async def websocket_handler(websocket: WebSocket, call_id: str):
         except RuntimeError as e:
             print(f"Websocket already closed for {call_id}")
         print(f"Closing llm ws for: {call_id}")
+
+
+@app.post("/webhook")
+async def handle_webhook(request: Request):
+    try:
+        post_data = await request.json()
+        if post_data["event"] == "call_started":
+            print("Call started event", post_data["data"]["call_id"])
+        elif post_data["event"] == "call_ended":
+            print("Call ended event", post_data["data"]["call_id"])
+        elif post_data["event"] == "call_analyzed":
+            print("Call analyzed event", post_data["data"]["call_id"])
+        else:
+            print("Unknown event", post_data["event"])
+        return JSONResponse(status_code=204)
+    except Exception as err:
+        print(f"Error in webhook: {err}")
+        return JSONResponse(
+            status_code=500, content={"message": "Internal Server Error"}
+        )
