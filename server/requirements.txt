@@ -1,5 +1,12 @@
+aiofiles==24.1.0
+deepface==0.0.93
 fastapi==0.115.11
+moviepy==2.1.2
+numpy==2.2.3
 pydantic==2.10.6
+pytest==8.3.4
 python-dotenv==1.0.1
 Requests==2.32.3
+resemblyzer==0.1.4
 supabase==2.13.0
+uvicorn==0.34.0
