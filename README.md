@@ -1,8 +1,8 @@
-# [ETA+](https://github.com/aurelisajuan/athenaHacks/blob/main/my-app/public/eta.png)
+# [ETA+](https://devpost.com/software/eta-1ubyla)
 
 ### An advanced safety monitoring platform, ensuring cross-platform compatibility and real-time AI-powered check-ins for security and peace of mind.
 
-<!-- insert logo/ landing page -->
+![ETA+](https://github.com/aurelisajuan/athenaHacks/blob/main/my-app/public/eta.png)
 
 <p align="center">
   Frontend built with: <br>
