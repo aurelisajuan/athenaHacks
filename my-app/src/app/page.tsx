@@ -114,47 +114,6 @@ export default function StartTrip() {
   }
 };
 
-
-  // Function to start a trip
-  // const startTrip = async () => {
-  //   // if (!userId) {
-  //   //   alert("User ID is required");
-  //   //   return;
-  //   // }
-  //   if (!startLocation.trim()) {
-  //     alert("Start location cannot be empty");
-  //     return;
-  //   }
-  //   if (!destination.trim()) {
-  //     alert("Destination cannot be empty");
-  //     return;
-  //   }
-  //
-  //   const API_URL = "http://localhost:8000";
-  //
-  //   const tripData = new FormData();
-  //   tripData.append("user_id", 20);
-  //   tripData.append("start_location", startLocation);
-  //   tripData.append("destination", destination);
-  //
-  //   try {
-  //     const response = await fetch(`${API_URL}/start`, {
-  //       method: "POST",
-  //       body: tripData,
-  //     });
-  //
-  //     const result = await response.json();
-  //     if (response.ok) {
-  //       alert(`Trip started successfully! ETA: ${result.eta} minutes`);
-  //     } else {
-  //       alert(`Failed to start trip: ${result.detail}`);
-  //     }
-  //   } catch (error) {
-  //     console.error("Error starting trip:", error);
-  //     alert("An error occurred while starting the trip.");
-  //   }
-  // };
-
   return (
     <APIProvider apiKey={API_KEY}>
       <div className="flex flex-col h-screen bg-gray-100">
