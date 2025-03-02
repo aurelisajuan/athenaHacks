@@ -2,6 +2,8 @@
 
 ### An advanced safety monitoring platform, ensuring cross-platform compatibility and real-time AI-powered check-ins for security and peace of mind.
 
+<!-- insert logo/ landing page -->
+
 <p align="center">
   Frontend built with: <br>
   <img src=https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white alt="Next.js">
