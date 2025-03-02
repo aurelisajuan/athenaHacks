@@ -55,7 +55,10 @@ export default function StartTrip() {
           {/* Header with greeting and avatar */}
           <div className="flex justify-between items-center mb-4 pt-4">
             <h1 className="text-xl font-large">
-              Hi, <span className="font-semibold">{userName}</span>
+              Hi,{" "}
+              <span className="font-semibold text-xl text-pink-500">
+                {userName}
+              </span>
             </h1>
             <Avatar className="w-10 h-10">
               <AvatarImage src="./jett.webp" />

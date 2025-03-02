@@ -127,19 +127,21 @@ export default function ArrivalCheckIn() {
 
         {/* Action Buttons */}
         <div className="flex flex-col items-center space-y-4 mb-14">
-          <button
-            onClick={recordArrival}
-            className="w-70 p-8 bg-blue-100 text-black font-medium rounded-full flex items-center gap-3 justify-center hover:bg-blue-200 transition-colors"
-          >
-            <ThumbsUp className="w-6 h-6 text-blue-500" />
-            Yes! Record an update
-          </button>
+          <a href="/bereal">
+            <button
+              onClick={recordArrival}
+              className="group w-70 p-8 bg-blue-100 text-black font-medium rounded-full flex items-center gap-3 justify-center shadow-md shadow-blue-100 hover:bg-blue-200 transition-colors active:bg-blue-500 active:text-white active:shadow-blue-500"
+            >
+              <ThumbsUp className="w-6 h-6 text-blue-500 group-active:text-white" />
+              Yes! Record an update
+            </button>
+          </a>
 
           <button
             onClick={initiateEmergencyCall}
-            className="w-70 p-8 bg-pink-100 text-black font-medium rounded-full flex items-center gap-3 justify-center hover:bg-pink-200 transition-colors"
+            className="group w-70 p-8 bg-pink-100 text-black font-medium rounded-full flex items-center gap-3 justify-center shadow-md shadow-pink-100 hover:bg-pink-200 transition-colors active:bg-pink-500 active:text-white active:shadow-pink-500"
           >
-            <Phone className="w-6 h-6 text-pink-500" />
+            <Phone className="w-6 h-6 text-pink-500 group-active:text-white" />
             No. Emergency Call
           </button>
         </div>
