@@ -111,21 +111,24 @@ export default function VideoUpdate({ onVerify }: VideoUpdateProps) {
   };
 
   // Handle verification
-  const handleVerify = async () => {
-    if (!videoBlob) return;
+  // const handleVerify = async () => {
+  //   if (!videoBlob) return;
+  //
+  //   setIsVerifying(true);
+  //   try {
+  //     // 1. Upload the videoBlob to your backend
+  //     // 2. Process facial recognition, voice recognition, and verify transcription
+  //     await new Promise((resolve) => setTimeout(resolve, 1500));
+  //     router.push("/");
+  //   } catch (error) {
+  //     console.error("Verification failed:", error);
+  //   } finally {
+  //     setIsVerifying(false);
+  //   }
+  // };
 
-    setIsVerifying(true);
-    try {
-      // 1. Upload the videoBlob to your backend
-      // 2. Process facial recognition, voice recognition, and verify transcription
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      router.push("/");
-    } catch (error) {
-      console.error("Verification failed:", error);
-    } finally {
-      setIsVerifying(false);
-    }
-  };
+  // const userId = localStorage.getItem("user_id");
+  const userId = 21;
 
   // Reset recording
   const handleReset = () => {
@@ -133,6 +136,56 @@ export default function VideoUpdate({ onVerify }: VideoUpdateProps) {
     setTranscription("");
     setRecordingDuration(0);
   };
+
+  const handleVerify = async () => {
+    if (!videoBlob) {
+      console.error("No video recorded.");
+      return;
+    }
+
+    setIsVerifying(true);
+
+    // Convert Blob to File
+    const videoFile = new File([videoBlob], "checkin_video.mp4", { type: "video/mp4" });
+
+    const formData = new FormData();
+    formData.append("user_id", userId); // Replace with the actual user ID
+    formData.append("file", videoFile);
+
+    // Use environment variable for backend URL
+    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+    const API_ENDPOINT = `${BACKEND_URL}/check-in`;
+
+    try {
+      const requestOptions: { method: string; body: FormData } = {
+        method: "POST",
+        body: formData,
+      };
+
+      const response = await fetch(API_ENDPOINT, requestOptions);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("Check-in response:", data);
+
+      if (data.matched) {
+        console.log("Verification successful");
+        router.push("/");
+      } else {
+        console.error("Verification failed");
+      }
+    } catch (error) {
+      console.error("Error uploading video:", error);
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+
+
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col">

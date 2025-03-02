@@ -143,27 +143,6 @@ async def set_status(trip_id: str, status: str) -> dict:
     else:
         return {"status": "error", "message": result.get("error")}
     
-async def notify_emergency_contact(user_id: int, trips_id: int, contact_name: str, phone_number: str) -> dict:
-    """
-    Notifies an emergency contact by sending a push notification and initiating a phone call.
-    
-    Args:
-        traveler_id (str): Unique identifier for the traveler.
-        trip_id (str): Identifier for the trip.
-        contact_name (str): Name of the emergency contact.
-        phone_number (str): Phone number of the emergency contact.
-        device_token (str): Device token to send the push notification. Defaults to a dummy token.
-    
-    Returns:
-        dict: A dictionary with the results of the push notification and call initiation.
-    """
-    # Construct a notification message that includes traveler and trip details.
-    message = f"Emergency Alert: Traveler {user_id} on trip {trips_id} requires assistance. Please contact {contact_name} immediately."
-        
-    # Initiate an automated phone call. Replace initiateCall with your actual integration.
-    call_result = initiateCall(phone_number)
-    
-    return {"call": call_result}
 
 
 def initiateCall(phoneNumber: str) -> dict:
