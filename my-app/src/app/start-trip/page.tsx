@@ -1,5 +1,6 @@
 "use client";
 
+import NavTask from "@/components/ui/nav";
 import React, { useState, useEffect, useRef } from "react";
 import { MapPin, Bell, Users } from "lucide-react";
 import {
@@ -83,30 +84,7 @@ export default function StartTrip() {
             </div>
           </div>
         </div>
-
-        {/* Bottom navigation */}
-        <div className="flex justify-around items-center py-3 bg-white">
-          <button className="flex flex-col items-center">
-            <a href="/trip-info" className="text-xs">
-              <div className="w-8 h-8 flex items-center justify-center">
-                <MapPin className="h-6 w-6" />
-              </div>
-              Trip Status
-            </a>
-          </button>
-          <button className="flex flex-col items-center">
-            <div className="w-8 h-8 flex items-center justify-center">
-              <Bell className="h-6 w-6" />
-            </div>
-            <span className="text-xs">Alert</span>
-          </button>
-          <button className="flex flex-col items-center">
-            <div className="w-8 h-8 flex items-center justify-center">
-              <Users className="h-6 w-6" />
-            </div>
-            <span className="text-xs">My Contact</span>
-          </button>
-        </div>
+        <NavTask />
       </div>
     </APIProvider>
   );

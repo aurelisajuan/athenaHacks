@@ -69,7 +69,7 @@ export default function TripInfo() {
         <div className="flex justify-between items-center mb-4 pt-4 w-full">
           <div className="flex items-center space-x-3">
             <Footprints className="h-6 w-6 text-pink-500" />
-            <h1 className="text-xl font-large uppercase tracking-wider">
+            <h1 className="text-xl uppercase tracking-wider font-medium">
               Your Trip
             </h1>
           </div>
@@ -83,22 +83,24 @@ export default function TripInfo() {
       {/* Trip Details */}
       <section className="px-5 pb-5">
         <div className="mb-4">
-          <p className="text-gray-500 uppercase text-sm font-medium">
+          <p className="text-gray-500 uppercase text-sm font-bold mb-1">
             DESTINATION
           </p>
           <h2 className="text-3xl font-bold">{tripData.destination.name}</h2>
-          <p className="text-gray-500">{tripData.destination.address}</p>
+          <p className="text-gray-500 text-sm">
+            {tripData.destination.address}
+          </p>
         </div>
 
         <div className="flex justify-between mb-2">
           <div>
-            <p className="text-gray-500 uppercase text-sm font-medium">
+            <p className="text-gray-500 uppercase text-sm font-bold">
               ESTIMATED ARRIVAL
             </p>
             <h3 className="text-3xl font-bold">{tripData.estimatedArrival}</h3>
           </div>
           <div>
-            <p className="text-gray-500 uppercase text-sm font-medium">
+            <p className="text-gray-500 uppercase text-sm font-bold">
               TRAVEL TIME
             </p>
             <h3 className="text-3xl font-bold">{tripData.travelTime}</h3>
@@ -108,7 +110,7 @@ export default function TripInfo() {
 
       {/* Emergency Contacts */}
       <section className="px-5 flex-1">
-        <p className="text-gray-500 uppercase text-sm font-medium mb-4">
+        <p className="text-gray-500 uppercase text-sm font-bold mb-4">
           NOTIFY EMERGENCY CONTACTS
         </p>
         <div>
@@ -121,11 +123,11 @@ export default function TripInfo() {
       {/* Bottom navigation */}
       <div className="flex justify-around items-center py-3 bg-white">
         <button className="flex flex-col items-center">
-          <a href="/trip-info" className="text-xs">
+          <a href="/trip-info" className="text-xs flex flex-col items-center">
             <div className="w-8 h-8 flex items-center justify-center">
               <MapPin className="h-6 w-6 text-pink-500" />
             </div>
-            Trip Status
+            <span className="text-xs">Trip Status</span>
           </a>
         </button>
         <button className="flex flex-col items-center">
