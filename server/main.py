@@ -100,11 +100,10 @@ async def login(user: LoginRequest):
 
 @app.post("/get-ref-video")
 async def get_ref_video(user_id: int = Form(...), file: UploadFile = File(...)):
+    path = f"user_data/{user_id}_ref_vid.mp4"
     try:
         if not user_id:
             return {"error": "User ID is required"}
-
-        path = f"user_data/{user_id}_ref_vid.mp4"
 
         async with aiofiles.open(path, "wb") as video_file:
             content = await file.read()
@@ -121,12 +120,13 @@ async def get_ref_video(user_id: int = Form(...), file: UploadFile = File(...)):
 
         if response.count == 0:
             raise HTTPException(status_code=404, detail="User ID not found in database")
-
+        os.remove(path)
         return {
             "message": "Reference video processed successfully"
         }
 
     except Exception as e:
+        os.remove(path)
         return {"error": str(e)}
 
 

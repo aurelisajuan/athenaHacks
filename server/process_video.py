@@ -31,7 +31,7 @@ def process_voice(input_file, user_id, category=1):
     video = VideoFileClip(input_file)
     video.audio.write_audiofile(output_file)
     embed = embed_voice(output_file)
-    # os.remove(output_file)
+    os.remove(output_file)
     return embed
 
 
@@ -56,10 +56,10 @@ def process_image(input_file, user_id, category=1):
         cv2.imwrite(output_file, frame)
         cap.release()
         embed = embed_face(output_file)
-        # os.remove(output_file)
+        os.remove(output_file)
         return embed
     else:
         cap.release()
-        # os.remove(output_file)
+        os.remove(output_file)
         return None
 
