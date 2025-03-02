@@ -104,11 +104,6 @@ export default function ArrivalCheckIn() {
             {currentLocation ? (
               <APIProvider
                 apiKey={API_KEY}
-                loadOptions={{
-                  googleMapsApiKey:
-                    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
-                  mapIds: ["716aee15e4ac08d3"],
-                }}
               >
                 <Map
                   mapId="<716aee15e4ac08d3>"

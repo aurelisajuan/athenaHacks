@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { MapPin, Bell, Users } from "lucide-react";
 
 const Nav: React.FC = () => {
-  // Trip starts as active; other buttons are inactive.
+  // Initially, no icon is active
   const [activeIcons, setActiveIcons] = useState({
     trip: false,
     alert: false,
@@ -12,11 +12,11 @@ const Nav: React.FC = () => {
   });
 
   const handleClick = (icon: "trip" | "alert" | "contact") => {
-    // When a button is clicked, mark it active.
-    setActiveIcons((prev) => ({
-      ...prev,
-      [icon]: false,
-    }));
+    setActiveIcons({
+      trip: icon === "trip",
+      alert: icon === "alert",
+      contact: icon === "contact",
+    });
   };
 
   return (
@@ -25,7 +25,7 @@ const Nav: React.FC = () => {
         onClick={() => handleClick("trip")}
         className="flex flex-col items-center"
       >
-        <a href="/trip-info" className="text-xs flex flex-col items-center">
+        <a href="/" className="text-xs flex flex-col items-center">
           <div className="w-8 h-8 flex items-center justify-center">
             <MapPin
               className={`h-6 w-6 ${
@@ -38,7 +38,7 @@ const Nav: React.FC = () => {
               activeIcons.trip ? "text-pink-500" : "text-gray-500"
             }`}
           >
-            Trip Status
+            Start Trip
           </span>
         </a>
       </button>
@@ -59,7 +59,7 @@ const Nav: React.FC = () => {
               activeIcons.alert ? "text-pink-500" : "text-gray-500"
             }`}
           >
-            Alert
+            Trip Status
           </span>
         </a>
       </button>
@@ -67,20 +67,22 @@ const Nav: React.FC = () => {
         onClick={() => handleClick("contact")}
         className="flex flex-col items-center"
       >
-        <div className="w-8 h-8 flex items-center justify-center">
-          <Users
-            className={`h-6 w-6 ${
+        <a href="/trip-info" className="text-xs flex flex-col items-center">
+          <div className="w-8 h-8 flex items-center justify-center">
+            <Users
+              className={`h-6 w-6 ${
+                activeIcons.contact ? "text-pink-500" : "text-gray-500"
+              }`}
+            />
+          </div>
+          <span
+            className={`text-xs ${
               activeIcons.contact ? "text-pink-500" : "text-gray-500"
             }`}
-          />
-        </div>
-        <span
-          className={`text-xs ${
-            activeIcons.contact ? "text-pink-500" : "text-gray-500"
-          }`}
-        >
-          My Contact
-        </span>
+          >
+            My Contact
+          </span>
+        </a>
       </button>
     </div>
   );
