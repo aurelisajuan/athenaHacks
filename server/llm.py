@@ -24,6 +24,7 @@ from prompts import (
     mid_checkin_prompt,
     final_checkin_prompt,
     beginSentence,
+    beginSentenceFinal,
 )
 from db import set_status, notify_emergency_contact
 from typing import List, Dict, Any
@@ -66,7 +67,7 @@ class LlmClient:
         print("Drafting begin message")
         return {
             "response_id": 0,
-            "content": beginSentence,
+            "content": beginSentence if self.mode == 0 else beginSentenceFinal,
             "content_complete": True,
             "end_call": False,
         }
@@ -132,7 +133,7 @@ class LlmClient:
                         "properties": {
                             "status": {
                                 "type": "string",
-                                "enum": ["safe", "alert", "in-progress"],
+                                "enum": ["safe", "alert", "completed"],
                             },
                             "notes": {"type": "string"},
                         },
@@ -224,8 +225,9 @@ class LlmClient:
                     notes = args.get("notes")
                     output = f"Traveler status updated to: {status}. Notes: {notes}"
                     print("Output:", output)
+                    print(self.trip_details)
                     await set_status(
-                        self.trip_details.get("trip_id"),
+                        self.trip_details.get("id"),
                         status,
                     )
                     new_messages.append(

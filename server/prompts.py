@@ -1,6 +1,9 @@
 # Opening 
 beginSentence = "Hey there, it's ETA, how is your journey going?"
 
+# Opening - final
+beginSentenceFinal = "Hey there, it's ETA, how was your journey?"
+
 # Modified Mid-journey status prompt.
 mid_checkin_prompt = """
     Task: As a voice AI agent, you are engaging in a natural, human-like conversation with the traveler to ensure their safety during the journey. Your primary responsibility is to perform a mid-journey status check. 
