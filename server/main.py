@@ -1,9 +1,9 @@
-import os
 import math
-import requests
 import asyncio
 import uvicorn
 from functools import partial
+import ast
+import os
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Form, Request, UploadFile, File
@@ -22,7 +22,6 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_API_KEY = os.getenv("SUPABASE_API_KEY")
 GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
 GOOGLE_MAPS_MATRIX_API = os.getenv("GOOGLE_MAPS_API_KEY")
-
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_API_KEY)
 
@@ -109,13 +108,13 @@ async def get_ref_video(user_id: int = Form(...), file: UploadFile = File(...)):
             content = await file.read()
             await video_file.write(content)
 
-        voice_embedding = process_voice(path, user_id)
-        face_embedding = process_image(path, user_id)
+        voice_embed = process_voice(path, user_id)
+        face_embed = process_image(path, user_id)
 
         # save to database
         response = supabase.table("users").update({
-            "voice_embed": voice_embedding.tolist(),
-            "face_embed": face_embedding.tolist()
+            "voice_embed": voice_embed.tolist(),
+            "face_embed": face_embed.tolist()
         }).eq("id", user_id).execute()
 
         if response.count == 0:
@@ -151,29 +150,61 @@ async def get_interval(time: int = Form(...)):
     return {"received_message": time}
 
 
+def get_embeddings(user_id: int):
+    response = supabase.table("users").select("voice_embed, face_embed").eq("id", user_id).execute()
+
+    # Check if user exists
+    if not response.data:
+        raise HTTPException(status_code=404, detail="User ID not found in database")
+
+    # Extract embeddings
+    embeddings = response.data[0]
+
+    voice_embedding = embeddings["voice_embed"]
+    face_embedding = embeddings["face_embed"]
+
+    if isinstance(voice_embedding, str):  # Convert from string to list
+        voice_embedding = ast.literal_eval(voice_embedding)
+
+    if isinstance(face_embedding, str):  # Convert from string to list
+        face_embedding = ast.literal_eval(face_embedding)
+
+    voice_embedding = np.array(voice_embedding, dtype=np.float32)
+    face_embedding = np.array(face_embedding, dtype=np.float32)
+
+    return voice_embedding, face_embedding
+
+
 @app.post("/check-in")
-async def check_in(request: Request):
+async def check_in(user_id: int = Form(...), file: UploadFile = File(...)):
+    path = f"user_data/{user_id}_checkin_vid.mp4"
     try:
-        video_bytes = await request.body()  # Read the video bytes
-        path = "demos/serena_video.mp4"
+        if not user_id:
+            return {"error": "User ID is required"}
 
         async with aiofiles.open(path, "wb") as video_file:
-            await video_file.write(video_bytes)
+            content = await file.read()
+            await video_file.write(content)
 
-        voice_path = process_voice(path, 1)
-        img_path = process_image(path, 1)
+        voice_embed1, face_embed1 = get_embeddings(user_id)
 
-        result = recognition(voice_path, "demos/serena_demo.wav", img_path, "demos/serena_img3.png")
+        voice_embed2 = process_voice(path, user_id)
+        face_embed2 = process_image(path, user_id)
 
+        result = recognition(voice_embed1, voice_embed2,face_embed1, face_embed2)
+
+        os.remove(path)
         return {"matched": result}
 
     except Exception as e:
+        os.remove(path)
         return {"error": str(e)}
 
 
 class ETARequest(BaseModel):
     start: str
     destination: str
+
 
 def calc_eta_sync(start: str, destination: str) -> int:
     """
@@ -191,14 +222,14 @@ def calc_eta_sync(start: str, destination: str) -> int:
     print(response)
     # The response is already a dictionary, no need to call json()
     data = response
-    
+
     if data.get("status") != "OK":
         raise Exception("Error with Distance Matrix API: " + data.get("error_message", "Unknown error"))
-    
+
     element = data["rows"][0]["elements"][0]
     if element.get("status") != "OK":
         raise Exception("No route found: " + element.get("status", "Unknown error"))
-    
+
     duration_in_seconds = element["duration"]["value"]
     buffered_duration = duration_in_seconds * 1.2  # Apply 20% safety buffer
     eta_minutes = math.ceil(buffered_duration / 60)
@@ -224,5 +255,4 @@ async def calculate_eta_endpoint(request: ETARequest):
 
 
 if __name__ == "__main__":
-
     uvicorn.run(app, host="127.0.0.1", port=8000, reload=True)

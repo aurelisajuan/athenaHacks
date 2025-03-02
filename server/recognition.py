@@ -2,12 +2,12 @@ from facial_recognition import *
 from voice_recognition import *
 
 
-def recognition(voice_embed1, voice_path2, face_embed1, face_path2):
-    voice = voice_recognition(voice_embed1, voice_path2)
+def recognition(voice_embed1, voice_embed2, face_embed1, face_embed2):
+    voice = voice_recognition(voice_embed1, voice_embed2)
     if not voice:
         return False, 0
 
-    face = facial_recognition(face_embed1, face_path2)
+    face = facial_recognition(face_embed1, face_embed2)
     if not face:
         return False, 1
 

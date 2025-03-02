@@ -20,13 +20,11 @@ def embed_face(image_path, model_name="VGG-Face"):
     return np.array(embedding)
 
 
-def process_voice(input_file, user_id, category=1):
+def process_voice(input_file, user_id):
     if not os.path.exists(input_file):
         raise FileNotFoundError(f"Input file {input_file} not found.")
 
-    output_file = f"user_data/{user_id}_checkin_voice.wav"
-    if category == 1:
-        output_file = f"user_data/{user_id}_ref_voice.wav"
+    output_file = f"user_data/{user_id}_voice.wav"
 
     video = VideoFileClip(input_file)
     video.audio.write_audiofile(output_file)
@@ -35,13 +33,11 @@ def process_voice(input_file, user_id, category=1):
     return embed
 
 
-def process_image(input_file, user_id, category=1):
+def process_image(input_file, user_id):
     if not os.path.exists(input_file):
         raise FileNotFoundError(f"Input file {input_file} not found.")
 
-    output_file = f"user_data/{user_id}_checkin_face.png"
-    if category == 1:
-        output_file = f"user_data/{user_id}_ref_face.png"
+    output_file = f"user_data/{user_id}_face.png"
 
     cap = cv2.VideoCapture(input_file)
 

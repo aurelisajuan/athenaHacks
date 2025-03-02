@@ -6,10 +6,8 @@ def compare_embeddings(embed1, embed2):
     return similarity > 0.5  # Threshold (adjust as needed)
 
 
-def facial_recognition(embed1, path):
-    embed2 = embed_face(path)
+def facial_recognition(embed1, embed2):
     result = compare_embeddings(embed1, embed2)
-
     return result
 
 

@@ -6,9 +6,7 @@ def cosine_similarity(vec1, vec2):
     return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
 
 
-def voice_recognition(embed1, path):
-    embed2 = embed_voice(path)
-
+def voice_recognition(embed1, embed2):
     # Compute similarity
     similarity = cosine_similarity(embed1, embed2)
 
