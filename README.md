@@ -1,4 +1,4 @@
-# [ETA+](https://etaplus.com)
+# [ETA+](https://github.com/aurelisajuan/athenaHacks/blob/main/my-app/public/eta.png)
 
 ### An advanced safety monitoring platform, ensuring cross-platform compatibility and real-time AI-powered check-ins for security and peace of mind.
 
