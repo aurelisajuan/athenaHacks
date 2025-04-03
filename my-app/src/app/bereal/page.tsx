@@ -152,7 +152,7 @@ export default function VideoUpdate() {
     // Use environment variable for backend URL
     const BACKEND_URL =
       process.env.NEXT_PUBLIC_BACKEND_URL ||
-      "http://https://95fd-207-151-52-106.ngrok-free.app";
+      "https://95fd-207-151-52-106.ngrok-free.app";
     const API_ENDPOINT = `${BACKEND_URL}/check-in`;
 
     try {

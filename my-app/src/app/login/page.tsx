@@ -21,7 +21,7 @@ const Login = () => {
       return;
     }
 
-    const API_URL = "http://https://95fd-207-151-52-106.ngrok-free.app";
+    const API_URL = "https://95fd-207-151-52-106.ngrok-free.app";
 
     try {
       const response = await fetch(`${API_URL}/login`, {

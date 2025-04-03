@@ -72,11 +72,6 @@ export default function StartTrip() {
     }
   };
 
-  const updateTripDetailsInDB = async (tripId: string, start_location: string, destination: string) => {
-    // Add your logic to update trip details in the database here
-    console.log(`Updating trip details in DB for tripId: ${tripId}, start_location: ${start_location}, destination: ${destination}`);
-  };
-
   const startTrip = async () => {
     if (!startLocation.trim()) {
       alert("Start location cannot be empty");
@@ -87,7 +82,7 @@ export default function StartTrip() {
       return;
     }
 
-    const API_URL = "http://https://95fd-207-151-52-106.ngrok-free.app";
+    const API_URL = "https://95fd-207-151-52-106.ngrok-free.app";
 
     const tripData = new FormData();
     tripData.append("user_id", "21"); // Ensure userId is available
